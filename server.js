@@ -1726,22 +1726,25 @@ app.get(/^\/wiki\/(.+)$/, (req, res) => {
 app.get('/', (req, res) => res.redirect('/map/'));
 
 const CODE_MAP_DIR = path.join(__dirname, 'map');
+const CODE_WIKI_DIR = path.join(__dirname, 'wiki');
 [WIKI_DIR, MAP_DIR, IMG_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
 if (DATA_PATH !== __dirname) {
-    function copyMissing(src, dst) {
+    function copyMissing(src, dst, skip) {
         const entries = fs.readdirSync(src, { withFileTypes: true });
         for (const e of entries) {
+            if (skip && skip.includes(e.name)) continue;
             const s = path.join(src, e.name);
             const t = path.join(dst, e.name);
             if (e.isDirectory()) {
                 if (!fs.existsSync(t)) fs.mkdirSync(t, { recursive: true });
-                copyMissing(s, t);
+                copyMissing(s, t, skip);
             } else if (!fs.existsSync(t)) {
                 fs.copyFileSync(s, t);
             }
         }
     }
     copyMissing(CODE_MAP_DIR, MAP_DIR);
+    copyMissing(CODE_WIKI_DIR, WIKI_DIR, ['images', 'versions']);
 }
 
 app.listen(PORT, () => {
