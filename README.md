@@ -12,7 +12,7 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 
 | Map Editor | Wiki Editor |
 |:---:|:---:|
-| ![Map Editor](map/images/editormapp.png) | ![Wiki Editor](map/images/EditorArticoli.png) |
+| ![Map Editor](map/images/EditorArticoli.png) | ![Wiki Editor](map/images/editormapp.png) |
 
 ## Live Demo
 
