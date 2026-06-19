@@ -50,12 +50,12 @@ services:
   aetherion:
     image: ghcr.io/fenrir22/interactive-fantasy-map-wiki:latest
     ports:
-      - "3210:3000"
+      - "3000:3000"
     environment:
       - ADMIN_USER=admin
-      - ADMIN_PASS=Salame22
-      - SESSION_SECRET=aetherion-secret-change-me
-      - APP_LANG=it
+      - ADMIN_PASS=admin
+      - SESSION_SECRET=change-me-to-a-random-string
+      - APP_LANG=eng
       - DATA_PATH=/app/data
     volumes:
       - ./data:/app/data
