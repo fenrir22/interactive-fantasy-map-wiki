@@ -7,7 +7,7 @@ services:
       - ADMIN_USER=admin
       - ADMIN_PASS=admin
       - SESSION_SECRET=aetherion-secret-change-me
-      - APP_LANG=it
+      - APP_LANG=eng
       - DATA_PATH=/app/data
     volumes:
       - ./data:/app/data
