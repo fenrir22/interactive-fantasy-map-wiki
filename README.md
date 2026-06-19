@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
 
-A complete fantasy world wiki + interactive map, running in a single Docker container.
+A complete fantasy world wiki + interactive map with a built-in marker editor, running in a single Docker container.
 
 ## Screenshots
 
@@ -23,6 +23,7 @@ A complete fantasy world wiki + interactive map, running in a single Docker cont
 ## Features
 
 - **Interactive map** — Leaflet with CRS.Simple, zoom and pan, compass, place search
+- **Marker editor** — place, drag, edit, and delete points directly on the map; customize icons, labels, and linked wiki pages
 - **Integrated wiki** — Markdown pages with BlockNote editor (React/Notion-style), image upload, version history
 - **Side panel** — click a marker on the map to read its linked wiki article
 - **Map editor** — create, edit, delete markers; import/merge/export JSON; save to server
