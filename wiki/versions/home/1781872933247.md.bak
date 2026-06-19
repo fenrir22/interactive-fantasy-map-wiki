@@ -1,0 +1,29 @@
+Benvenuti nell'universo di **Aetherion**. Questo wiki contiene le conoscenze raccolte sui luoghi, i personaggi e le leggende del mondo.
+
+## Come funziona
+
+*   Ogni **marcatore** sulla [mappa](/map/) può puntare a una pagina del wiki
+*   Le pagine sono scritte in **Markdown** e modificate direttamente dal browser
+*   Per creare una nuova pagina, clicca su "Crealo ora" dalla pagina 404, o modifica il file `.md` nella cartella `wiki/`
+
+## Aggiungere un marcatore alla mappa
+
+1.  Apri `markers.json` nella cartella `map/`
+2.  Aggiungi un oggetto con `lat`, `lng`, `name`, `desc` e `wiki`
+3.  Il campo `wiki` deve contenere l'URL della pagina wiki, ad esempio `/wiki/luogo`
+
+## Esempio di marcatore
+
+```json
+{
+    "lat": 2131,
+    "lng": 2405,
+    "name": "Città Antica",
+    "desc": "Le rovine di una civiltà dimenticata",
+    "wiki": "/wiki/citta_antica"
+}
+```
+
+## Esplora
+
+Usa la [mappa interattiva](/map/) per navigare il mondo.

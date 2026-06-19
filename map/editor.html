@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{editor_page_title}}</title>
+    <link rel="icon" type="image/svg+xml" href="/map/favicon.svg">
+    <meta property="og:title" content="{{editor_og_title}}">
+    <meta property="og:description" content="{{editor_og_description}}">
+    <meta property="og:image" content="/map/favicon.svg">
+    <meta property="og:url" content="/map/edit">
+    <meta name="twitter:card" content="summary">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        [x-cloak] { display: none !important; }
+
+        .compass {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1200;
+            width: 100px;
+            height: 100px;
+            pointer-events: none;
+            user-select: none;
+            transition: transform 0.3s ease;
+        }
+        .compass-ring-outer {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(201, 168, 76, 0.15);
+            background: radial-gradient(circle, rgba(15,19,37,0.5), rgba(8,12,26,0.85));
+            box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4), 0 0 15px rgba(201,168,76,0.05);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass-ring-inner {
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            background: radial-gradient(circle, rgba(15,19,37,0.3), transparent);
+            position: relative;
+        }
+        .compass-point {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 18px solid rgba(201, 168, 76, 0.25);
+            transform-origin: center bottom;
+        }
+        .compass-point.major { border-bottom-color: rgba(201, 168, 76, 0.5); }
+        .compass-point.n { transform: translate(-50%, -100%) rotate(0deg); }
+        .compass-point.ne { transform: translate(-50%, -100%) rotate(45deg); }
+        .compass-point.e { transform: translate(-50%, -100%) rotate(90deg); }
+        .compass-point.se { transform: translate(-50%, -100%) rotate(135deg); }
+        .compass-point.s { transform: translate(-50%, -100%) rotate(180deg); }
+        .compass-point.sw { transform: translate(-50%, -100%) rotate(225deg); }
+        .compass-point.w { transform: translate(-50%, -100%) rotate(270deg); }
+        .compass-point.nw { transform: translate(-50%, -100%) rotate(315deg); }
+        .compass-n {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 0.65rem;
+            color: var(--gold-light);
+            font-weight: 700;
+            text-shadow: 0 0 12px rgba(232, 196, 74, 0.4), 0 0 30px rgba(232, 196, 74, 0.15);
+            z-index: 2;
+        }
+        .compass-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 6px; height: 6px;
+            margin: -3px 0 0 -3px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--gold-light), var(--gold-dark));
+            box-shadow: 0 0 12px rgba(201, 168, 76, 0.6);
+            z-index: 3;
+        }
+        .compass-deco {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            margin: -10px 0 0 -10px;
+            border-radius: 50%;
+            border: 1px solid rgba(201, 168, 76, 0.08);
+        }
+        .compass-deco2 {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 32px; height: 32px;
+            margin: -16px 0 0 -16px;
+            border-radius: 50%;
+            border: 1px dashed rgba(201, 168, 76, 0.08);
+        }
+
+        .loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 9999;
+            background: var(--bg-deep);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease;
+        }
+        .loader.hidden { opacity: 0; pointer-events: none; }
+        .loader-content { text-align: center; }
+        .loader-title {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            color: var(--gold);
+            text-shadow: 0 0 40px rgba(201, 168, 76, 0.3);
+        }
+        .loader-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            letter-spacing: 4px;
+            margin-top: 4px;
+        }
+        .loader-spinner {
+            margin: 32px auto 0;
+            width: 40px; height: 40px;
+            border: 3px solid rgba(201, 168, 76, 0.1);
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        :root {
+            --gold: #c9a84c;
+            --gold-light: #e8c44a;
+            --gold-dark: #8a6e2b;
+            --bg-deep: #080c1a;
+            --bg-card: rgba(12, 16, 32, 0.72);
+            --text-primary: #f0e6d3;
+            --text-secondary: #a8987a;
+            --border-glow: rgba(201, 168, 76, 0.15);
+            --border-glow-strong: rgba(201, 168, 76, 0.28);
+            --radius: 12px;
+        }
+
+        html, body {
+            margin: 0; padding: 0; overflow: hidden;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 100%, rgba(201, 168, 76, 0.03) 0%, transparent 40%),
+                var(--bg-deep);
+            font-family: 'Cormorant Garamond', Georgia, serif;
+        }
+
+        .editor-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 58px;
+            padding: 0 28px;
+            background: rgba(8, 12, 26, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border-glow);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+        }
+        .editor-nav::after {
+            content: ''; position: absolute; bottom: -1px; left: 5%; right: 5%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+            opacity: 0.5;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 14px; }
+        .nav-logo {
+            width: 30px; height: 30px; border-radius: 6px;
+            object-fit: contain;
+            background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold-dark));
+            box-shadow: 0 0 14px rgba(201, 168, 76, 0.25);
+        }
+        .editor-nav a {
+            font-family: 'Cinzel', serif; color: var(--gold); text-decoration: none;
+            font-size: 0.82rem; letter-spacing: 1.2px; transition: all 0.25s ease;
+            text-shadow: 0 0 10px rgba(201, 168, 76, 0.12);
+        }
+        .editor-nav a:hover { color: var(--gold-light); }
+        .editor-nav .nav-links { display: flex; gap: 22px; align-items: center; }
+
+        #map { position: absolute; top: 58px; bottom: 0; left: 0; right: 0; will-change: transform; }
+        .leaflet-container { background: var(--bg-deep) !important; }
+        .leaflet-image-layer { will-change: transform; image-rendering: auto; }
+        .leaflet-pane { will-change: transform; }
+
+        .search-container {
+            position: absolute;
+            top: 72px;
+            left: 340px;
+            right: 20px;
+            z-index: 1500;
+            max-width: 400px;
+        }
+        .search-input-wrap {
+            display: flex; align-items: center;
+            background: rgba(15, 19, 37, 0.9);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 10px;
+            padding: 0 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
+        .search-input-wrap:focus-within {
+            border-color: rgba(201, 168, 76, 0.5);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 0 3px rgba(201, 168, 76, 0.08);
+            background: rgba(15, 19, 37, 0.97);
+        }
+        .search-icon { font-size: 1rem; opacity: 0.4; margin-right: 10px; flex-shrink: 0; }
+        .search-input {
+            flex: 1; background: none; border: none; outline: none;
+            color: var(--text-primary);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem; padding: 12px 0; letter-spacing: 0.5px;
+        }
+        .search-input::placeholder { color: rgba(240, 230, 211, 0.3); font-style: italic; }
+        .search-clear {
+            font-size: 1.3rem; color: rgba(240, 230, 211, 0.3);
+            cursor: pointer; padding: 4px 0 4px 10px;
+            display: none; transition: color 0.2s; flex-shrink: 0;
+        }
+        .search-clear:hover { color: var(--gold-light); }
+        .search-clear.visible { display: block; }
+
+        .search-results {
+            margin-top: 6px; border-radius: 10px;
+            background: rgba(15, 19, 37, 0.95);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            overflow: hidden;
+            max-height: 0; opacity: 0;
+            transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+        }
+        .search-results.open { max-height: 320px; opacity: 1; overflow-y: auto; }
+        .search-results::-webkit-scrollbar { width: 4px; }
+        .search-results::-webkit-scrollbar-track { background: transparent; }
+        .search-results::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 4px; }
+        .search-result-item {
+            padding: 10px 16px; cursor: pointer;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+            transition: background 0.2s;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: rgba(201, 168, 76, 0.08); }
+        .search-result-item .result-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--gold); flex-shrink: 0;
+            box-shadow: 0 0 8px rgba(201, 168, 76, 0.4);
+        }
+        .search-result-item .result-name {
+            color: var(--text-primary);
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem; letter-spacing: 1px;
+        }
+        .search-result-item .result-desc {
+            color: var(--text-secondary); font-size: 0.8rem;
+            font-style: italic; margin-left: auto;
+            white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 120px;
+        }
+        .search-result-item.highlight { background: rgba(201, 168, 76, 0.15); }
+        .search-no-results {
+            padding: 20px; text-align: center;
+            color: var(--text-secondary); font-style: italic; font-size: 0.9rem;
+        }
+
+        .editor-hint {
+            position: absolute; top: 126px; left: 340px; z-index: 1500;
+            font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 1px;
+            color: var(--text-secondary); opacity: 0.6; pointer-events: none;
+        }
+
+        .sidebar {
+            position: absolute; top: 72px; left: 20px;
+            width: 300px; max-height: calc(100vh - 92px);
+            overflow-y: auto; z-index: 1000;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
+            padding: 22px;
+            color: var(--text-primary);
+            box-shadow: 0 12px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+            transition: transform 0.3s, opacity 0.3s;
+        }
+        .sidebar::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.25), transparent);
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 4px; }
+
+        .sidebar-title {
+            font-family: 'Cinzel', Georgia, serif;
+            font-size: 1.15rem; letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--gold-light);
+            text-align: center;
+            margin: 0 0 4px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-glow);
+            text-shadow: 0 0 20px rgba(232, 196, 74, 0.15), 0 0 2px rgba(232, 196, 74, 0.1);
+        }
+        .sidebar-subtitle {
+            text-align: center; color: var(--text-secondary);
+            font-size: 0.8rem; font-style: italic;
+            margin: 0 0 18px 0; letter-spacing: 0.5px; font-weight: 400;
+        }
+        .form-group { margin-bottom: 12px; }
+        .form-group label {
+            display: block; color: var(--text-secondary);
+            letter-spacing: 1.5px; margin-bottom: 5px;
+            text-transform: uppercase;
+            font-family: 'Cinzel', Georgia, serif; font-size: 0.65rem;
+        }
+        input[type="text"], input[type="url"], textarea {
+            width: 100%; padding: 10px 12px;
+            background: rgba(8, 12, 26, 0.6);
+            color: var(--text-primary);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            border-radius: 8px;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        input[type="text"]:focus, input[type="url"]:focus, textarea:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.1);
+        }
+        input::placeholder, textarea::placeholder { color: rgba(168, 152, 122, 0.4); }
+
+        .btn {
+            width: 100%; padding: 10px 14px; border: none; border-radius: 8px;
+            font-family: 'Cinzel', Georgia, serif;
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 1px;
+            text-transform: uppercase; cursor: pointer;
+            transition: all 0.2s; position: relative; overflow: hidden;
+        }
+
+        .btn-gold { background: linear-gradient(135deg, #b8860b, #c9a84c); color: #0a0e1a; }
+        .btn-gold:hover { background: linear-gradient(135deg, #c9a84c, #e8d48b); }
+        .btn-teal { background: linear-gradient(135deg, #1a6b5c, #23937f); color: #f0e6d3; }
+        .btn-teal:hover { background: linear-gradient(135deg, #23937f, #2abf9f); }
+        .btn-danger { background: linear-gradient(135deg, #6b1a1a, #932323); color: #f0e6d3; }
+        .btn-danger:hover { background: linear-gradient(135deg, #932323, #bf2f2f); }
+        .btn-blue { background: linear-gradient(135deg, #1a3a6b, #235593); color: #f0e6d3; }
+        .btn-blue:hover { background: linear-gradient(135deg, #235593, #2f7abf); }
+        .btn-purple { background: linear-gradient(135deg, #3a1a6b, #552393); color: #f0e6d3; }
+        .btn-purple:hover { background: linear-gradient(135deg, #552393, #7a2fbf); }
+        .btn-green { background: linear-gradient(135deg, #2a6b1a, #3d9323); color: #f0e6d3; }
+        .btn-green:hover { background: linear-gradient(135deg, #3d9323, #52bf2f); }
+        .btn-dark { background: rgba(8, 12, 26, 0.6); color: var(--text-secondary); border: 1px solid rgba(201,168,76,0.1); }
+        .btn-dark:hover { background: rgba(8, 12, 26, 0.8); color: var(--text-primary); }
+        .btn-save-server {
+            background: linear-gradient(135deg, #6b5a1a, #938323);
+            color: #f0e6d3; margin-top: 6px;
+        }
+        .btn-save-server:hover { background: linear-gradient(135deg, #938323, #bfa32f); }
+
+        .hidden { display: none !important; }
+        .divider {
+            border: none; border-top: 1px solid var(--border-glow);
+            margin: 16px 0;
+        }
+        .sidebar-actions { display: flex; flex-direction: column; gap: 8px; }
+        .sidebar-actions-row { display: flex; gap: 8px; }
+        .sidebar-actions-row .btn { flex: 1; }
+
+        .wiki-select-wrap { display: flex; gap: 6px; }
+        .wiki-select-wrap input { flex: 1; cursor: pointer; }
+        .wiki-select-btn {
+            flex-shrink: 0; padding: 0 14px; border-radius: 8px;
+            border: 1px solid rgba(201,168,76,0.3);
+            background: rgba(201,168,76,0.1);
+            color: #c9a84c; font-size: 0.75rem; letter-spacing: 1px;
+            font-family: Cinzel, serif; cursor: pointer;
+            transition: all 0.2s; text-transform: uppercase;
+        }
+        .wiki-select-btn:hover { background: rgba(201,168,76,0.2); border-color: #c9a84c; }
+        .wiki-selector {
+            margin-top: 4px; border-radius: 8px;
+            background: rgba(12,16,32,0.98);
+            border: 1px solid rgba(201,168,76,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            overflow: hidden;
+            max-height: 0; opacity: 0; pointer-events: none;
+            transition: max-height 0.25s cubic-bezier(0.22,1,0.36,1), opacity 0.2s;
+        }
+        .wiki-selector.open { max-height: 280px; opacity: 1; pointer-events: auto; overflow-y: auto; }
+        .wiki-selector::-webkit-scrollbar { width: 4px; }
+        .wiki-selector::-webkit-scrollbar-track { background: transparent; }
+        .wiki-selector::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 4px; }
+        .wiki-sel-search-wrap { padding: 8px; border-bottom: 1px solid rgba(201,168,76,0.08); position: sticky; top: 0; background: rgba(12,16,32,0.98); z-index: 1; }
+        .wiki-sel-search-wrap input {
+            width: 100%; padding: 7px 10px; border-radius: 6px;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(201,168,76,0.15);
+            color: var(--text-primary); outline: none;
+            font-family: 'Cormorant Garamond', serif; font-size: 0.85rem;
+        }
+        .wiki-sel-search-wrap input:focus { border-color: var(--gold); }
+        .wiki-sel-item {
+            padding: 8px 14px; cursor: pointer; font-size: 0.9rem;
+            transition: background 0.15s; color: var(--text-primary);
+        }
+        .wiki-sel-item:hover, .wiki-sel-item.highlight { background: rgba(201,168,76,0.12); }
+        .wiki-sel-empty { padding: 20px; text-align: center; color: var(--text-secondary); font-style: italic; font-size: 0.85rem; }
+        .wiki-sel-create {
+            padding: 10px 14px; cursor: pointer; font-size: 0.85rem;
+            border-top: 1px solid rgba(201,168,76,0.1);
+            color: var(--gold-light); transition: background 0.15s;
+            font-family: Cinzel, serif; letter-spacing: 0.5px;
+            position: sticky; bottom: 0; background: rgba(12,16,32,0.98);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .wiki-sel-create:hover { background: rgba(201,168,76,0.12); }
+        .wiki-sel-create-icon { font-size: 1.1rem; font-weight: 700; }
+        .wiki-sel-inline {
+            padding: 8px; border-top: 1px solid rgba(201,168,76,0.1);
+            display: flex; gap: 6px;
+        }
+        .wiki-sel-inline input {
+            flex: 1; padding: 6px 10px; border-radius: 6px;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(201,168,76,0.2);
+            color: var(--text-primary); outline: none;
+            font-family: 'Cormorant Garamond', serif; font-size: 0.85rem;
+        }
+        .wiki-sel-inline input:focus { border-color: var(--gold); }
+        .wiki-sel-inline button {
+            padding: 6px 14px; border-radius: 6px; border: none;
+            background: linear-gradient(135deg, #b8860b, #c9a84c); color: #0a0e1a;
+            font-family: Cinzel, serif; font-size: 0.7rem; letter-spacing: 1px;
+            cursor: pointer; text-transform: uppercase; white-space: nowrap;
+        }
+        .wiki-sel-inline button:hover { background: linear-gradient(135deg, #c9a84c, #e8d48b); }
+
+        .fantasy-marker { background: none !important; border: none !important; }
+        .marker-pin {
+            width: 14px; height: 14px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #e8d48b, #c9a84c);
+            border: 2px solid rgba(255,255,255,0.35);
+            transition: transform 0.2s; cursor: pointer;
+        }
+        .marker-pin.has-wiki { border-color: rgba(255,215,0,0.6); }
+        .marker-pin:hover, .marker-pin.active { transform: scale(1.35); border-color: #fff; }
+        .fantasy-tooltip {
+            background: rgba(10,14,26,0.92) !important;
+            border: 1px solid rgba(201,168,76,0.2) !important;
+            color: #d4d0c8 !important; font-family: 'Cormorant Garamond', serif !important;
+            font-size: 0.9rem !important; padding: 6px 14px !important;
+            border-radius: 4px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+        }
+        .leaflet-popup-content-wrapper {
+            background: rgba(10,14,26,0.95) !important; color: #d4d0c8 !important;
+            border: 1px solid rgba(201,168,76,0.15) !important;
+            border-radius: 6px !important; font-family: 'Cormorant Garamond', serif !important;
+            font-size: 0.95rem !important;
+        }
+        .leaflet-popup-tip { background: rgba(10,14,26,0.95) !important; }
+        .leaflet-popup-close-button { color: #7a7a7a !important; font-size: 18px !important; top: 6px !important; right: 6px !important; }
+
+        .wiki-panel {
+            position: fixed; top: 0; right: 0; width: 50vw; max-width: 700px;
+            height: 100vh; z-index: 2000;
+            background: rgba(10, 14, 28, 0.86);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-left: 1px solid var(--border-glow);
+            box-shadow: -12px 0 60px rgba(0,0,0,0.55);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex; flex-direction: column; padding: 0;
+        }
+        .wiki-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 1px; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(201, 168, 76, 0.3), transparent);
+        }
+        .wiki-panel.open { transform: translateX(0); }
+        .wiki-panel-header {
+            display: flex; align-items: flex-start;
+            justify-content: space-between;
+            padding: 24px 28px 16px;
+            border-bottom: 1px solid rgba(201,168,76,0.08);
+            flex-shrink: 0;
+        }
+        .wiki-panel-header-text { flex: 1; min-width: 0; }
+        .wiki-panel-title {
+            font-family: 'Cinzel', serif; font-size: 1.2rem;
+            color: var(--gold); margin: 0; letter-spacing: 1px;
+            font-weight: 400;
+        }
+        .wiki-panel-desc {
+            color: var(--text-secondary); font-size: 0.9rem;
+            font-style: italic; margin: 4px 0 0;
+        }
+        .wiki-panel-close {
+            background: none; border: 1px solid rgba(201,168,76,0.15);
+            color: rgba(240,230,211,0.5);
+            font-size: 1.2rem; cursor: pointer; padding: 6px 12px;
+            line-height: 1; transition: all 0.25s;
+            flex-shrink: 0; margin-left: 16px; border-radius: 6px;
+        }
+        .wiki-panel-close:hover {
+            color: var(--gold-light);
+            border-color: rgba(201,168,76,0.4);
+            background: rgba(201,168,76,0.08);
+            transform: rotate(90deg);
+        }
+        .wiki-panel-body {
+            flex: 1; min-height: 0; display: flex; flex-direction: column;
+            position: relative;
+            opacity: 0; transition: opacity 0.4s ease; transition-delay: 0.2s;
+        }
+        .wiki-panel.open .wiki-panel-body { opacity: 1; }
+        .wiki-iframe {
+            width: 100%; flex: 1; border: none;
+            border-radius: 8px; background: #fff;
+            min-height: 0; opacity: 0; transition: opacity 0.5s ease;
+        }
+        .wiki-iframe.loaded { opacity: 1; }
+        .wiki-loading {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex; flex-direction: column;
+            align-items: center; gap: 16px;
+            color: var(--text-secondary); font-style: italic;
+        }
+        .wiki-loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(201,168,76,0.1);
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .wiki-empty {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: var(--text-secondary); font-style: italic;
+            text-align: center; gap: 12px;
+        }
+        .wiki-empty-icon { font-size: 3rem; opacity: 0.2; }
+        .wiki-panel-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1999;
+            background: rgba(0,0,0,0.3);
+            opacity: 0; pointer-events: none; transition: opacity 0.4s;
+        }
+        .wiki-panel-overlay.visible { opacity: 1; pointer-events: auto; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.45); background-clip: content-box; }
+
+        @media (max-width: 700px) {
+            .editor-nav { padding: 0 16px; }
+            .editor-nav .nav-links { gap: 14px; }
+            .editor-nav a { font-size: 0.75rem; }
+            .sidebar {
+                top: auto; bottom: 0; left: 0; right: 0;
+                width: 100%; max-height: 55vh;
+                border-radius: var(--radius) var(--radius) 0 0; padding: 16px;
+            }
+            .search-container { top: 72px; left: 14px; right: 14px; max-width: none; }
+            .editor-hint { left: 14px; top: 126px; }
+            .compass { display: none; }
+            .wiki-panel { width: 100%; padding: 0; }
+            .wiki-panel-title { font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+<nav class="editor-nav">
+    <div class="nav-brand">
+        <img class="nav-logo" src="/map/[[favicon]]" alt="[[worldName]]">
+        <a href="/wiki/">{{nav_brand}}</a>
+    </div>
+    <div class="nav-links">
+        <a href="/map/">{{nav_map}}</a>
+        <a href="/map/edit">{{nav_editor}}</a>
+        <a href="/settings">{{nav_settings}}</a>
+        <a href="/wiki/">{{nav_home}}</a>
+        <a href="/logout/" style="color:#7a7a7a">{{nav_logout}}</a>
+    </div>
+</nav>
+<div x-data="{ loaderHidden: false }">
+    <div class="loader" id="loader" x-show="!loaderHidden" x-transition:leave.opacity.duration.500ms>
+        <div class="loader-content">
+            <div class="loader-title">[[worldName]]</div>
+            <div class="loader-subtitle">{{editor_loader_subtitle}}</div>
+            <div class="loader-spinner"></div>
+        </div>
+    </div>
+
+    <div class="search-container" id="searchContainer">
+        <div class="search-input-wrap">
+            <span class="search-icon">&#128270;</span>
+            <input type="text" class="search-input" id="searchInput" placeholder="{{editor_search_placeholder}}" autocomplete="off">
+            <span class="search-clear" id="searchClear">&times;</span>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <div class="compass">
+        <div class="compass-ring-outer">
+            <div class="compass-ring-inner">
+                <div class="compass-deco2"></div>
+                <div class="compass-deco"></div>
+                <span class="compass-n">N</span>
+                <div class="compass-point n major"></div>
+                <div class="compass-point ne"></div>
+                <div class="compass-point e major"></div>
+                <div class="compass-point se"></div>
+                <div class="compass-point s major"></div>
+                <div class="compass-point sw"></div>
+                <div class="compass-point w major"></div>
+                <div class="compass-point nw"></div>
+                <div class="compass-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="wiki-panel-overlay" id="wikiOverlay"></div>
+    <div class="wiki-panel" id="wikiPanel">
+        <div class="wiki-panel-header">
+            <div class="wiki-panel-header-text">
+                <h2 class="wiki-panel-title" id="wikiTitle">{{editor_wiki_panel_title}}</h2>
+                <p class="wiki-panel-desc" id="wikiDesc">{{editor_wiki_panel_desc}}</p>
+            </div>
+            <button class="wiki-panel-close" id="wikiClose">&#10005;</button>
+        </div>
+        <div class="wiki-panel-body">
+            <div class="wiki-loading" id="wikiLoading">
+                <div class="wiki-loading-spinner"></div>
+                <span>{{editor_wiki_loading}}</span>
+            </div>
+            <iframe class="wiki-iframe" id="wikiIframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            <div class="wiki-empty" id="wikiEmpty">
+                <div class="wiki-empty-icon">&#128214;</div>
+                <span>{{editor_wiki_empty}}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="sidebar-title" id="sidebar-title">{{editor_sidebar_title}}</div>
+        <div class="sidebar-subtitle">{{editor_sidebar_subtitle}}</div>
+
+        <div class="form-group">
+            <label for="name">{{editor_label_name}}</label>
+            <input type="text" id="name" placeholder="{{editor_placeholder_name}}">
+        </div>
+        <div class="form-group">
+            <label for="desc">{{editor_label_desc}}</label>
+            <textarea id="desc" rows="2" placeholder="{{editor_placeholder_desc}}"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="wiki">{{editor_label_wiki}}</label>
+            <div class="wiki-select-wrap">
+                <input type="text" id="wiki" readonly placeholder="{{editor_placeholder_wiki}}">
+                <button class="wiki-select-btn" id="wikiSelectBtn">{{editor_btn_choose}}</button>
+            </div>
+            <div class="wiki-selector" id="wikiSelector">
+                <div class="wiki-sel-search-wrap">
+                    <input type="text" id="wikiSelSearch" placeholder="{{editor_search_article}}" autocomplete="off">
+                </div>
+                <div class="wiki-sel-list" id="wikiSelList"></div>
+                <div class="wiki-sel-create" id="wikiSelCreate">
+                    <span class="wiki-sel-create-icon">+</span> {{editor_create_page}}
+                </div>
+                <div class="wiki-sel-inline hidden" id="wikiSelInline">
+                    <input type="text" id="wikiSelInput" placeholder="{{editor_placeholder_new_page}}" maxlength="80">
+                    <button id="wikiSelConfirm">{{editor_btn_create}}</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-mode-btns">
+            <button class="btn btn-gold" onclick="startAddingMarker()">{{editor_start_placing}}</button>
+        </div>
+        <div id="edit-mode-btns" class="hidden">
+            <button class="btn btn-teal" onclick="saveMarkerEdits()">{{editor_update_info}}</button>
+            <div style="height:8px"></div>
+            <button class="btn btn-gold" id="openWikiBtn" onclick="openWikiFromSidebar()" style="font-size:0.78rem">{{editor_open_wiki}}</button>
+            <div style="height:8px"></div>
+            <button class="btn btn-danger" onclick="deleteActiveMarker()">{{editor_delete_marker}}</button>
+        </div>
+
+        <hr class="divider">
+
+        <div class="sidebar-actions">
+            <button class="btn btn-blue" onclick="document.getElementById('fileInput').click()">{{editor_import_json}}</button>
+            <input type="file" id="fileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+            <button class="btn btn-purple" onclick="document.getElementById('mergeInput').click()">{{editor_merge_json}}</button>
+            <input type="file" id="mergeInput" accept=".json" multiple class="hidden" onchange="handleMergeUpload(event)">
+            <div class="sidebar-actions-row">
+                <button class="btn btn-green" onclick="saveMarkersToJSON()">{{editor_download_json}}</button>
+                <button class="btn btn-dark" onclick="clearAllMarkers()">{{editor_clear_all}}</button>
+            </div>
+            <button class="btn btn-save-server" onclick="saveMarkersToServer()">{{editor_save_server}}</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        /* ---- branding loader ---- */
+        let brandingData = null;
+        fetch('/api/branding?' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                brandingData = data;
+                var root = document.documentElement;
+                var c = data.colors;
+                if (c.gold) root.style.setProperty('--gold', c.gold);
+                if (c.goldLight) root.style.setProperty('--gold-light', c.goldLight);
+                if (c.goldDark) root.style.setProperty('--gold-dark', c.goldDark);
+                if (c.bgDeep) root.style.setProperty('--bg-deep', c.bgDeep);
+                if (c.textPrimary) root.style.setProperty('--text-primary', c.textPrimary);
+                if (c.textSecondary) root.style.setProperty('--text-secondary', c.textSecondary);
+                if (c.borderGlow) root.style.setProperty('--border-glow', c.borderGlow);
+                if (c.radius) root.style.setProperty('--radius', c.radius);
+                if (data.worldName) {
+                    document.title = data.worldName + ' {{editor_page_title_suffix}}';
+                    var titleEls = document.querySelectorAll('.loader-title');
+                    titleEls.forEach(function(el) { el.textContent = data.worldName; });
+                    var navBrand = document.querySelector('.editor-nav a[href="/wiki/"]');
+                    if (navBrand) navBrand.textContent = data.worldName + ' {{nav_brand_suffix}}';
+                }
+            })
+            .catch(function() {});
+
+        const appRoot = document.querySelector('[x-data]');
+        const loader = document.getElementById('loader');
+
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -3, maxZoom: 8, zoomSnap: 0.25,
+            attributionControl: false,
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false
+        });
+
+        var imageWidth = 7648;
+        var imageHeight = 3808;
+        var mapImageFile = 'mappa.svg';
+        if (brandingData) {
+            if (brandingData.mapWidth) imageWidth = brandingData.mapWidth;
+            if (brandingData.mapHeight) imageHeight = brandingData.mapHeight;
+            if (brandingData.mapImage) mapImageFile = brandingData.mapImage;
+        }
+        const bounds = [[0, 0], [imageHeight, imageWidth]];
+
+        const img = new Image();
+        img.onload = function() {
+            L.imageOverlay(mapImageFile, bounds).addTo(map);
+            map.fitBounds(bounds);
+            map.zoomControl.setPosition('topright');
+            setTimeout(() => {
+                map.invalidateSize();
+                if (appRoot && appRoot.__x) {
+                    appRoot.__x.$data.loaderHidden = true;
+                } else {
+                    loader.classList.add('hidden');
+                }
+            }, 500);
+        };
+        img.src = mapImageFile;
+
+        const compassEl = document.querySelector('.compass');
+        function updateCompass() {
+            const z = map.getZoom();
+            const t = (z - map.getMinZoom()) / (map.getMaxZoom() - map.getMinZoom());
+            compassEl.style.transform = 'scale(' + (0.75 + t * 0.7) + ')';
+        }
+        map.on('zoomend', updateCompass);
+        setTimeout(updateCompass, 600);
+
+        function makeIcon(hasWiki) {
+            return L.divIcon({
+                className: 'fantasy-marker',
+                html: '<div class="marker-pin' + (hasWiki ? ' has-wiki' : '') + '"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+                popupAnchor: [0, -16]
+            });
+        }
+
+        const wikiPanel = document.getElementById('wikiPanel');
+        const wikiOverlay = document.getElementById('wikiOverlay');
+        const wikiTitle = document.getElementById('wikiTitle');
+        const wikiDesc = document.getElementById('wikiDesc');
+        const wikiIframe = document.getElementById('wikiIframe');
+        const wikiLoading = document.getElementById('wikiLoading');
+        const wikiEmpty = document.getElementById('wikiEmpty');
+        const wikiClose = document.getElementById('wikiClose');
+
+        let activeMarkerEl = null;
+
+        function openWiki(name, desc, wikiUrl, markerEl) {
+            wikiTitle.textContent = name;
+            wikiDesc.textContent = desc || '';
+            wikiIframe.classList.remove('loaded');
+            wikiIframe.src = '';
+            if (wikiUrl && wikiUrl.trim()) {
+                wikiIframe.style.display = 'flex';
+                wikiEmpty.style.display = 'none';
+                wikiLoading.style.display = 'flex';
+                wikiIframe.src = wikiUrl.trim();
+            } else {
+                wikiIframe.style.display = 'none';
+                wikiEmpty.style.display = 'flex';
+                wikiLoading.style.display = 'none';
+            }
+            if (activeMarkerEl) activeMarkerEl.classList.remove('active');
+            if (markerEl) {
+                markerEl.classList.add('active');
+                activeMarkerEl = markerEl;
+            }
+            wikiPanel.classList.add('open');
+            wikiOverlay.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function openWikiFromSidebar() {
+            if (!activeMarker) return;
+            var name = document.getElementById('name').value.trim() || activeMarker.customName;
+            var desc = document.getElementById('desc').value.trim();
+            var wiki = document.getElementById('wiki').value.trim();
+            openWiki(name, desc, wiki, activeMarker._icon);
+        }
+
+        function closeWiki() {
+            wikiPanel.classList.remove('open');
+            wikiOverlay.classList.remove('visible');
+            document.body.style.overflow = '';
+            wikiIframe.src = '';
+            wikiIframe.classList.remove('loaded');
+            if (activeMarkerEl) {
+                activeMarkerEl.classList.remove('active');
+                activeMarkerEl = null;
+            }
+            map.closePopup();
+        }
+
+        wikiIframe.addEventListener('load', function() {
+            wikiLoading.style.display = 'none';
+            wikiIframe.classList.add('loaded');
+        });
+        wikiIframe.addEventListener('error', function() {
+            wikiLoading.style.display = 'none';
+            wikiIframe.classList.add('loaded');
+        });
+        wikiClose.addEventListener('click', closeWiki);
+        wikiOverlay.addEventListener('click', closeWiki);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeWiki();
+        });
+
+        let addingMode = false;
+        let activeMarker = null;
+        const allMarkers = [];
+
+        function updateMarkerIcon(marker) {
+            const hasWiki = !!(marker.customWiki && marker.customWiki.trim());
+            marker.setIcon(makeIcon(hasWiki));
+            if (marker._icon) marker._icon.classList.remove('active');
+            if (activeMarkerEl === marker._icon) activeMarkerEl = null;
+        }
+
+        function createMapMarker(latlng, name, desc, wiki) {
+            const hasWiki = !!(wiki && wiki.trim());
+            const marker = L.marker(latlng, { icon: makeIcon(hasWiki), draggable: true }).addTo(map);
+            marker.customName = name;
+            marker.customDesc = desc || '';
+            marker.customWiki = wiki || '';
+            marker.bindTooltip(name, { direction: 'top', offset: [0, -20], className: 'fantasy-tooltip' });
+            allMarkers.push(marker);
+
+            const popupHtml = desc
+                ? '<b>' + name + '</b><br>' + desc
+                : '<b>' + name + '</b>';
+            marker.bindPopup(popupHtml, { closeOnClick: false });
+
+            marker.on('popupopen', function() {
+                activeMarker = marker;
+                document.getElementById('name').value = marker.customName;
+                document.getElementById('desc').value = marker.customDesc;
+                document.getElementById('wiki').value = marker.customWiki;
+                document.getElementById('sidebar-title').innerText = '{{editor_edit_marker}}';
+                document.getElementById('add-mode-btns').classList.add('hidden');
+                document.getElementById('edit-mode-btns').classList.remove('hidden');
+            });
+
+            marker.on('click', function() {
+                const el = this._icon;
+                if (activeMarkerEl) activeMarkerEl.classList.remove('active');
+                el.classList.add('active');
+                activeMarkerEl = el;
+            });
+
+            return marker;
+        }
+
+        function loadMarkersFromServer() {
+            fetch('markers.json?' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    data.forEach(function(m) {
+                        createMapMarker([m.lat, m.lng], m.name, m.desc || '', m.wiki || '');
+                    });
+                })
+                .catch(function() {});
+        }
+
+        map.on('popupclose', function() {
+            activeMarker = null;
+            document.getElementById('name').value = '';
+            document.getElementById('desc').value = '';
+            document.getElementById('wiki').value = '';
+            document.getElementById('sidebar-title').innerText = '{{editor_sidebar_title}}';
+            document.getElementById('add-mode-btns').classList.remove('hidden');
+            document.getElementById('edit-mode-btns').classList.add('hidden');
+        });
+
+        function saveMarkerEdits() {
+            if (!activeMarker) return;
+            const newName = document.getElementById('name').value.trim() || '{{editor_unnamed_location}}';
+            const newDesc = document.getElementById('desc').value.trim();
+            const newWiki = document.getElementById('wiki').value.trim();
+            activeMarker.customName = newName;
+            activeMarker.customDesc = newDesc;
+            activeMarker.customWiki = newWiki;
+            const popupHtml = newDesc
+                ? '<b>' + newName + '</b><br>' + newDesc
+                : '<b>' + newName + '</b>';
+            activeMarker.setPopupContent(popupHtml);
+            updateMarkerIcon(activeMarker);
+        }
+
+        function deleteActiveMarker() {
+            if (!activeMarker) return;
+            if (confirm('{{editor_confirm_delete_1}}' + activeMarker.customName + '{{editor_confirm_delete_2}}')) {
+                if (activeMarker._icon) activeMarker._icon.classList.remove('active');
+                map.removeLayer(activeMarker);
+                activeMarker = null;
+            }
+        }
+
+        function startAddingMarker() {
+            addingMode = true;
+            document.querySelector('.btn-gold').style.background = 'linear-gradient(135deg, #8a6e2b, #b8860b)';
+            document.querySelector('.btn-gold').innerText = '{{editor_click_map}}';
+        }
+
+        map.on('click', function(e) {
+            wikiPanel.classList.remove('open');
+            wikiOverlay.classList.remove('visible');
+            document.body.style.overflow = '';
+            wikiIframe.src = '';
+            wikiIframe.classList.remove('loaded');
+            if (!addingMode) return;
+            const name = document.getElementById('name').value.trim() || '{{editor_unnamed_location}}';
+            const desc = document.getElementById('desc').value.trim();
+            const wiki = document.getElementById('wiki').value.trim();
+            createMapMarker(e.latlng, name, desc, wiki);
+            addingMode = false;
+            const btn = document.querySelector('.btn-gold');
+            btn.style.background = '';
+            btn.innerText = '{{editor_start_placing}}';
+            document.getElementById('name').value = '';
+            document.getElementById('desc').value = '';
+            document.getElementById('wiki').value = '';
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    data.forEach(function(m) { createMapMarker([m.lat, m.lng], m.name, m.desc || '', m.wiki || ''); });
+                } catch (error) {
+                    alert('{{editor_invalid_json}}');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function handleMergeUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            let totalCount = 0, filesRead = 0;
+            Array.from(files).forEach(function(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        data.forEach(function(m) { createMapMarker([m.lat, m.lng], m.name, m.desc || '', m.wiki || ''); totalCount++; });
+                    } catch (error) { console.error('Errore in ' + file.name); }
+                    filesRead++;
+                    if (filesRead === files.length) {
+                        alert('{{editor_merge_done_1}}' + totalCount + '{{editor_merge_done_2}}' + files.length + '{{editor_merge_done_3}}');
+                    }
+                };
+                reader.readAsText(file);
+            });
+            event.target.value = '';
+        }
+
+        function collectMarkers() {
+            const markers = [];
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Marker) {
+                    const latlng = layer.getLatLng();
+                    markers.push({
+                        lat: Math.round(latlng.lat),
+                        lng: Math.round(latlng.lng),
+                        name: layer.customName || '{{editor_default_marker_name}}',
+                        desc: layer.customDesc || '',
+                        wiki: layer.customWiki || ''
+                    });
+                }
+            });
+            return markers;
+        }
+
+        function saveMarkersToJSON() {
+            const markers = collectMarkers();
+            if (markers.length === 0) { alert('{{editor_no_markers}}'); return; }
+            const blob = new Blob([JSON.stringify(markers, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'markers.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function saveMarkersToServer() {
+            const markers = collectMarkers();
+            if (markers.length === 0 && !confirm('{{editor_confirm_save_empty}}')) return;
+            const btn = document.querySelector('.btn-save-server');
+            btn.textContent = '{{editor_saving}}';
+            btn.disabled = true;
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/markers', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function() {
+                btn.textContent = '{{editor_save_server}}';
+                btn.disabled = false;
+                if (xhr.status === 200) {
+                    alert('{{editor_saved_1}}' + markers.length + '{{editor_saved_2}}');
+                } else {
+                    alert('{{editor_save_error}}');
+                }
+            };
+            xhr.onerror = function() {
+                btn.textContent = '{{editor_save_server}}';
+                btn.disabled = false;
+                alert('{{editor_network_error}}');
+            };
+            xhr.send(JSON.stringify({ markers: markers }));
+        }
+
+        function clearAllMarkers() {
+            if (!confirm('{{editor_confirm_clear_all}}')) return;
+            map.eachLayer(function(l) { if (l instanceof L.Marker) map.removeLayer(l); });
+            allMarkers.length = 0;
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchClear = document.getElementById('searchClear');
+        let searchIndex = -1;
+
+        function filterMarkers(query) {
+            const q = query.toLowerCase().trim();
+            const results = document.getElementById('searchResults');
+            results.innerHTML = '';
+            if (!q) {
+                results.classList.remove('open');
+                searchClear.classList.remove('visible');
+                allMarkers.forEach(function(m) { if (m._icon) m._icon.style.opacity = '1'; });
+                searchIndex = -1;
+                return;
+            }
+            searchClear.classList.add('visible');
+            const matches = allMarkers.filter(function(m) {
+                return (m.customName && m.customName.toLowerCase().includes(q)) ||
+                       (m.customDesc && m.customDesc.toLowerCase().includes(q));
+            });
+            if (matches.length === 0) {
+                results.innerHTML = '<div class="search-no-results">{{editor_no_results}}</div>';
+                results.classList.add('open');
+                allMarkers.forEach(function(m) { if (m._icon) m._icon.style.opacity = '0.15'; });
+                searchIndex = -1;
+                return;
+            }
+            allMarkers.forEach(function(m) { if (m._icon) m._icon.style.opacity = matches.includes(m) ? '1' : '0.15'; });
+            matches.forEach(function(m, i) {
+                const div = document.createElement('div');
+                div.className = 'search-result-item' + (i === 0 ? ' highlight' : '');
+                div.innerHTML = '<span class="result-dot"></span><span class="result-name">' + (m.customName || '?') + '</span>';
+                if (m.customDesc) div.innerHTML += '<span class="result-desc">' + m.customDesc + '</span>';
+                div.dataset.index = i;
+                div.addEventListener('click', function() { selectResult(matches, parseInt(this.dataset.index)); });
+                div.addEventListener('mouseenter', function() {
+                    document.querySelectorAll('.search-result-item').forEach(function(el) { el.classList.remove('highlight'); });
+                    this.classList.add('highlight');
+                    searchIndex = parseInt(this.dataset.index);
+                });
+                results.appendChild(div);
+            });
+            results.classList.add('open');
+            searchIndex = 0;
+        }
+
+        function selectResult(matches, index) {
+            if (!matches || index < 0 || index >= matches.length) return;
+            const marker = matches[index];
+            searchInput.value = marker.customName || '';
+            filterMarkers(searchInput.value);
+            searchResults.classList.remove('open');
+            searchClear.classList.remove('visible');
+            map.panTo(marker.getLatLng(), { animate: true, duration: 0.5 });
+            if (marker._icon) {
+                marker._icon.classList.add('active');
+                marker._icon.style.opacity = '1';
+                if (activeMarkerEl) activeMarkerEl.classList.remove('active');
+                activeMarkerEl = marker._icon;
+            }
+            marker.openPopup();
+        }
+
+        let searchRaf = null;
+        searchInput.addEventListener('input', function() {
+            if (searchRaf) cancelAnimationFrame(searchRaf);
+            const v = this.value;
+            searchRaf = requestAnimationFrame(function() { filterMarkers(v); });
+        });
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length > 0 && searchIndex >= 0) {
+                    const match = allMarkers.filter(function(m) { return m._icon && m._icon.style.opacity !== '0.15'; });
+                    selectResult(match, searchIndex);
+                }
+            }
+            if (e.key === 'Escape') {
+                searchResults.classList.remove('open');
+                searchClear.classList.remove('visible');
+                searchInput.blur();
+                allMarkers.forEach(function(m) { if (m._icon) m._icon.style.opacity = '1'; });
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length === 0) return;
+                searchIndex = Math.min(searchIndex + 1, items.length - 1);
+                items.forEach(function(el, i) { el.classList.toggle('highlight', i === searchIndex); });
+                items[searchIndex].scrollIntoView({ block: 'nearest' });
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length === 0) return;
+                searchIndex = Math.max(searchIndex - 1, 0);
+                items.forEach(function(el, i) { el.classList.toggle('highlight', i === searchIndex); });
+                items[searchIndex].scrollIntoView({ block: 'nearest' });
+            }
+        });
+
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            filterMarkers('');
+            searchInput.focus();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                searchResults.classList.remove('open');
+                searchClear.classList.remove('visible');
+                allMarkers.forEach(function(m) { if (m._icon) m._icon.style.opacity = '1'; });
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveMarkersToServer();
+            }
+        });
+
+        /* wiki page selector */
+        var wikiPages = [];
+        var wikiInput = document.getElementById('wiki');
+        var wikiSel = document.getElementById('wikiSelector');
+        var wikiSelSearch = document.getElementById('wikiSelSearch');
+        var wikiSelList = document.getElementById('wikiSelList');
+        var wikiSelCreate = document.getElementById('wikiSelCreate');
+        var wikiSelInline = document.getElementById('wikiSelInline');
+        var wikiSelInput = document.getElementById('wikiSelInput');
+        var wikiSelConfirm = document.getElementById('wikiSelConfirm');
+        var wikiSelectBtn = document.getElementById('wikiSelectBtn');
+        var wikiSelIndex = -1;
+        var wikiSelOpen = false;
+
+        fetch('/api/wiki-pages?' + Date.now())
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(tree) {
+                function flatten(nodes, prefix, out) {
+                    for (var i = 0; i < nodes.length; i++) {
+                        var n = nodes[i];
+                        if (n.type === 'page') out.push(n.path);
+                        if (n.children) flatten(n.children, '', out);
+                    }
+                    return out;
+                }
+                wikiPages = flatten(tree, '', []).sort();
+            })
+            .catch(function(e) { console.error('Wiki pages fetch error:', e); });
+
+        function renderWikiSel(filter) {
+            wikiSelList.innerHTML = '';
+            var items = wikiPages;
+            if (filter) {
+                var f = filter.toLowerCase();
+                items = items.filter(function(p) { return p.toLowerCase().includes(f); });
+            }
+            if (!items.length) {
+                wikiSelList.innerHTML = '<div class="wiki-sel-empty">{{editor_no_results}}</div>';
+                return;
+            }
+            items.forEach(function(p, i) {
+                var div = document.createElement('div');
+                div.className = 'wiki-sel-item' + (i === 0 ? ' highlight' : '');
+                div.textContent = p.replace(/_/g, ' ');
+                div.dataset.page = p;
+                div.dataset.index = i;
+                div.addEventListener('click', function() { selectWikiPage(p); });
+                div.addEventListener('mouseenter', function() {
+                    wikiSelList.querySelectorAll('.wiki-sel-item').forEach(function(el) { el.classList.remove('highlight'); });
+                    this.classList.add('highlight');
+                    wikiSelIndex = parseInt(this.dataset.index);
+                });
+                wikiSelList.appendChild(div);
+            });
+            wikiSelIndex = 0;
+        }
+
+        function selectWikiPage(page) {
+            var val = '/wiki/' + page;
+            wikiInput.value = val;
+            closeWikiSel();
+        }
+
+        function openWikiSel() {
+            wikiSelOpen = true;
+            wikiSelSearch.value = '';
+            renderWikiSel('');
+            wikiSel.classList.add('open');
+            wikiSelSearch.focus();
+            wikiSelInline.classList.add('hidden');
+            wikiSelCreate.style.display = 'flex';
+        }
+
+        function closeWikiSel() {
+            wikiSelOpen = false;
+            wikiSel.classList.remove('open');
+            wikiSelSearch.blur();
+            wikiSelInline.classList.add('hidden');
+            wikiSelCreate.style.display = 'flex';
+        }
+
+        wikiSelectBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (wikiSelOpen) { closeWikiSel(); return; }
+            openWikiSel();
+        });
+
+        wikiInput.addEventListener('click', function() {
+            if (!wikiSelOpen) openWikiSel();
+        });
+
+        wikiSelSearch.addEventListener('input', function() {
+            renderWikiSel(this.value);
+        });
+
+        wikiSelSearch.addEventListener('keydown', function(e) {
+            var items = wikiSelList.querySelectorAll('.wiki-sel-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!items.length) return;
+                wikiSelIndex = Math.min(wikiSelIndex + 1, items.length - 1);
+                items.forEach(function(el, i) { el.classList.toggle('highlight', i === wikiSelIndex); });
+                items[wikiSelIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!items.length) return;
+                wikiSelIndex = Math.max(wikiSelIndex - 1, 0);
+                items.forEach(function(el, i) { el.classList.toggle('highlight', i === wikiSelIndex); });
+                items[wikiSelIndex].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (!wikiSelInline.classList.contains('hidden')) {
+                    wikiSelConfirm.click();
+                } else if (items.length && wikiSelIndex >= 0) {
+                    selectWikiPage(items[wikiSelIndex].dataset.page);
+                }
+            } else if (e.key === 'Escape') {
+                closeWikiSel();
+            }
+        });
+
+        wikiSelCreate.addEventListener('click', function() {
+            wikiSelCreate.style.display = 'none';
+            wikiSelInline.classList.remove('hidden');
+            wikiSelInput.value = '';
+            wikiSelInput.focus();
+        });
+
+        wikiSelConfirm.addEventListener('click', function() {
+            var name = wikiSelInput.value.trim();
+            if (!name) return;
+            name = name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim().replace(/\s+/g, '_');
+            if (!name) return;
+            selectWikiPage(name);
+            window.open('/wiki/_create?title=' + encodeURIComponent(name), '_blank');
+        });
+
+        wikiSelInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                wikiSelInline.classList.add('hidden');
+                wikiSelCreate.style.display = 'flex';
+                wikiSelSearch.focus();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (wikiSelOpen && !e.target.closest('.form-group')) {
+                closeWikiSel();
+            }
+        });
+
+        loadMarkersFromServer();
+    </script>
+</div>
+</body>
+</html>

@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{map_page_title}}</title>
+    <link rel="icon" type="image/svg+xml" href="/map/favicon.svg">
+    <meta property="og:title" content="{{map_og_title}}">
+    <meta property="og:description" content="{{map_og_description}}">
+    <meta property="og:image" content="/map/favicon.svg">
+    <meta property="og:url" content="/map/">
+    <meta name="twitter:card" content="summary">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        [x-cloak] { display: none !important; }
+
+        .compass {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1200;
+            width: 100px;
+            height: 100px;
+            pointer-events: none;
+            user-select: none;
+            transition: transform 0.3s ease;
+        }
+        .compass-ring-outer {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(201, 168, 76, 0.15);
+            background: radial-gradient(circle, rgba(15,19,37,0.5), rgba(8,12,26,0.85));
+            box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4), 0 0 15px rgba(201,168,76,0.05);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass-ring-inner {
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            background: radial-gradient(circle, rgba(15,19,37,0.3), transparent);
+            position: relative;
+        }
+        .compass-point {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 0; height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 18px solid rgba(201, 168, 76, 0.25);
+            transform-origin: center bottom;
+        }
+        .compass-point.major {
+            border-bottom-color: rgba(201, 168, 76, 0.5);
+        }
+        .compass-point.n { transform: translate(-50%, -100%) rotate(0deg); }
+        .compass-point.ne { transform: translate(-50%, -100%) rotate(45deg); }
+        .compass-point.e { transform: translate(-50%, -100%) rotate(90deg); }
+        .compass-point.se { transform: translate(-50%, -100%) rotate(135deg); }
+        .compass-point.s { transform: translate(-50%, -100%) rotate(180deg); }
+        .compass-point.sw { transform: translate(-50%, -100%) rotate(225deg); }
+        .compass-point.w { transform: translate(-50%, -100%) rotate(270deg); }
+        .compass-point.nw { transform: translate(-50%, -100%) rotate(315deg); }
+        .compass-n {
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Cinzel', serif;
+            font-size: 0.65rem;
+            color: var(--gold-light);
+            font-weight: 700;
+            text-shadow: 0 0 12px rgba(232, 196, 74, 0.4), 0 0 30px rgba(232, 196, 74, 0.15);
+            z-index: 2;
+        }
+        .compass-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 6px; height: 6px;
+            margin: -3px 0 0 -3px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--gold-light), var(--gold-dark));
+            box-shadow: 0 0 12px rgba(201, 168, 76, 0.6);
+            z-index: 3;
+        }
+        .compass-deco {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            margin: -10px 0 0 -10px;
+            border-radius: 50%;
+            border: 1px solid rgba(201, 168, 76, 0.08);
+        }
+        .compass-deco2 {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 32px; height: 32px;
+            margin: -16px 0 0 -16px;
+            border-radius: 50%;
+            border: 1px dashed rgba(201, 168, 76, 0.08);
+        }
+
+        .loader {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 9999;
+            background: var(--bg-deep);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease;
+        }
+        .loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loader-content {
+            text-align: center;
+        }
+        .loader-title {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            color: var(--gold);
+            text-shadow: 0 0 40px rgba(201, 168, 76, 0.3);
+        }
+        .loader-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            letter-spacing: 4px;
+            margin-top: 4px;
+        }
+        .loader-spinner {
+            margin: 32px auto 0;
+            width: 40px; height: 40px;
+            border: 3px solid rgba(201, 168, 76, 0.1);
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loader-fade {
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        :root {
+            --gold: #c9a84c;
+            --gold-light: #e8c44a;
+            --gold-dark: #8a6e2b;
+            --bg-deep: #080c1a;
+            --bg-card: rgba(12, 16, 32, 0.72);
+            --text-primary: #f0e6d3;
+            --text-secondary: #a8987a;
+            --border-glow: rgba(201, 168, 76, 0.15);
+            --border-glow-strong: rgba(201, 168, 76, 0.28);
+            --radius: 12px;
+        }
+
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 100%, rgba(201, 168, 76, 0.03) 0%, transparent 40%),
+                var(--bg-deep);
+            font-family: 'Cormorant Garamond', Georgia, serif;
+        }
+
+        #map {
+            position: absolute; top: 58px; bottom: 0; left: 0; right: 0;
+            will-change: transform;
+        }
+
+        .leaflet-container {
+            background: var(--bg-deep) !important;
+        }
+        .leaflet-image-layer { will-change: transform; image-rendering: auto; }
+        .leaflet-pane { will-change: transform; }
+
+        .nav-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 58px;
+            padding: 0 28px;
+            background: rgba(8, 12, 26, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border-glow);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+        }
+        .nav-bar::after {
+            content: ''; position: absolute; bottom: -1px; left: 5%; right: 5%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+            opacity: 0.5;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 14px; }
+        .nav-logo {
+            width: 30px; height: 30px; border-radius: 6px;
+            object-fit: contain;
+            background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold-dark));
+            box-shadow: 0 0 14px rgba(201, 168, 76, 0.25);
+        }
+        .nav-bar a {
+            font-family: 'Cinzel', serif; color: var(--gold); text-decoration: none;
+            font-size: 0.82rem; letter-spacing: 1.2px; transition: all 0.25s ease;
+            text-shadow: 0 0 10px rgba(201, 168, 76, 0.12);
+        }
+        .nav-bar a:hover { color: var(--gold-light); }
+        .nav-bar .nav-links { display: flex; gap: 22px; align-items: center; }
+
+        .search-container {
+            position: absolute;
+            top: 72px;
+            left: 52px;
+            z-index: 1500;
+            width: 260px;
+        }
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            background: rgba(15, 19, 37, 0.9);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 10px;
+            padding: 0 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
+        .search-input-wrap:focus-within {
+            border-color: rgba(201, 168, 76, 0.5);
+            box-shadow: 0 4px 30px rgba(0,0,0,0.6), 0 0 0 3px rgba(201, 168, 76, 0.08);
+            background: rgba(15, 19, 37, 0.97);
+        }
+        .search-icon {
+            font-size: 1rem;
+            opacity: 0.4;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            padding: 12px 0;
+            letter-spacing: 0.5px;
+        }
+        .search-input::placeholder {
+            color: rgba(240, 230, 211, 0.3);
+            font-style: italic;
+        }
+        .search-clear {
+            font-size: 1.3rem;
+            color: rgba(240, 230, 211, 0.3);
+            cursor: pointer;
+            padding: 4px 0 4px 10px;
+            display: none;
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+        .search-clear:hover { color: var(--gold-light); }
+        .search-clear.visible { display: block; }
+        .search-results {
+            margin-top: 6px;
+            border-radius: 10px;
+            background: rgba(15, 19, 37, 0.95);
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease, margin 0.3s ease;
+            margin-top: 0;
+        }
+        .search-results.open {
+            max-height: 320px;
+            opacity: 1;
+            margin-top: 6px;
+            overflow-y: auto;
+        }
+        .search-results::-webkit-scrollbar { width: 4px; }
+        .search-results::-webkit-scrollbar-track { background: transparent; }
+        .search-results::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 4px; }
+        .search-result-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover {
+            background: rgba(201, 168, 76, 0.08);
+        }
+        .search-result-item .result-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--gold);
+            flex-shrink: 0;
+            box-shadow: 0 0 8px rgba(201, 168, 76, 0.4);
+        }
+        .search-result-item .result-name {
+            color: var(--text-primary);
+            font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+        .search-result-item .result-desc {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-left: auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+        .search-result-item.highlight {
+            background: rgba(201, 168, 76, 0.15);
+        }
+        .search-no-results {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .map-title small {
+            display: block;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.55rem;
+            letter-spacing: 4px;
+            color: rgba(240, 230, 211, 0.5);
+            font-weight: 400;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .marker-pin {
+            width: 20px; height: 20px;
+            border-radius: 50% 50% 50% 0;
+            background: linear-gradient(135deg, #e8c44a, #b8860b);
+            transform: rotate(-45deg);
+            border: 2px solid rgba(255,255,255,0.35);
+            position: absolute;
+            left: 50%; top: 50%;
+            margin: -10px 0 0 -10px;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .marker-pin::after {
+            content: '';
+            width: 7px; height: 7px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            position: absolute;
+            left: 50%; top: 50%;
+            margin: -3.5px 0 0 -3.5px;
+        }
+
+        .fantasy-marker {
+            background: none !important;
+            border: none !important;
+        }
+
+        .fantasy-marker:hover .marker-pin {
+            transform: rotate(-45deg) scale(1.15);
+            border-color: #fff;
+        }
+
+        .fantasy-marker.active .marker-pin {
+            animation: marker-pulse 1.8s ease-in-out infinite;
+            border-color: #fff;
+        }
+
+        @keyframes marker-pulse {
+            0%, 100% { transform: rotate(-45deg) scale(1); }
+            50% { transform: rotate(-45deg) scale(1.1); }
+        }
+
+        .marker-pin.has-wiki {
+            background: linear-gradient(135deg, #f0d060, #c9a84c);
+        }
+
+        .marker-pin.has-wiki::before {
+            content: '';
+            position: absolute;
+            top: -2px; right: -2px;
+            width: 8px; height: 8px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border: 2px solid rgba(255,255,255,0.9);
+            border-radius: 50%;
+            transform: rotate(45deg);
+            z-index: 2;
+        }
+
+        .fantasy-tooltip {
+            background: rgba(15, 19, 37, 0.95) !important;
+            border: 1px solid rgba(201, 168, 76, 0.3) !important;
+            color: var(--text-primary) !important;
+            font-family: 'Cinzel', serif !important;
+            font-size: 0.7rem !important;
+            letter-spacing: 1px !important;
+            border-radius: 6px !important;
+            padding: 4px 12px !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+            white-space: nowrap;
+        }
+        .fantasy-tooltip::before {
+            border-top-color: rgba(201, 168, 76, 0.3) !important;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: linear-gradient(145deg, #1a1f35, #0f1325);
+            color: var(--text-primary);
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(201, 168, 76, 0.1);
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            padding: 4px 6px;
+        }
+
+        .leaflet-popup-tip {
+            background: #1a1f35;
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-top: none;
+            border-left: none;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 16px;
+            font-size: 1.05rem;
+            line-height: 1.4;
+            min-width: 180px;
+        }
+
+        .leaflet-popup-content b {
+            color: var(--gold-light);
+            font-family: 'Cinzel', Georgia, serif;
+            font-size: 1.15rem;
+            letter-spacing: 1px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .leaflet-popup-close-button {
+            color: rgba(240, 230, 211, 0.5) !important;
+            font-size: 18px !important;
+            top: 6px !important;
+            right: 6px !important;
+            transition: color 0.2s;
+        }
+
+        .leaflet-popup-close-button:hover {
+            color: var(--gold-light) !important;
+        }
+
+        .leaflet-control-zoom {
+            z-index: 1500 !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(15, 19, 37, 0.9) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-glow) !important;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(201, 168, 76, 0.2) !important;
+            color: var(--gold-light) !important;
+        }
+
+        .leaflet-control-attribution {
+            background: rgba(8, 12, 26, 0.85) !important;
+            color: rgba(240, 230, 211, 0.3) !important;
+            font-size: 11px;
+        }
+
+        .leaflet-control-attribution a {
+            color: rgba(201, 168, 76, 0.5) !important;
+        }
+
+        .wiki-panel {
+            position: absolute;
+            top: 0; right: 0;
+            width: 50%;
+            height: 100%;
+            z-index: 2000;
+            background: rgba(10, 14, 28, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-left: 1px solid var(--border-glow);
+            box-shadow: -12px 0 60px rgba(0,0,0,0.55);
+            transform: translateX(100%);
+            visibility: hidden;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s 0.4s;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+        }
+        .wiki-panel.open {
+            transform: translateX(0);
+            visibility: visible;
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s 0s;
+        }
+        .wiki-panel::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 1px; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(201, 168, 76, 0.3), transparent);
+        }
+
+        .wiki-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-glow);
+            margin-bottom: 16px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            transition-delay: 0.1s;
+        }
+
+        .wiki-panel.open .wiki-panel-header {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .wiki-panel-header-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .wiki-panel-title {
+            font-family: 'Cinzel', Georgia, serif;
+            font-size: 1.4rem;
+            color: var(--gold-light);
+            letter-spacing: 2px;
+            margin: 0;
+            text-shadow: 0 0 20px rgba(232, 196, 74, 0.15);
+        }
+
+        .wiki-panel-desc {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-style: italic;
+            margin: 6px 0 0 0;
+        }
+
+        .wiki-panel-close {
+            background: none;
+            border: 1px solid rgba(240, 230, 211, 0.15);
+            color: rgba(240, 230, 211, 0.5);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 6px 12px;
+            line-height: 1;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            margin-left: 16px;
+            border-radius: 6px;
+        }
+
+        .wiki-panel-close:hover {
+            color: var(--gold-light);
+            border-color: rgba(201, 168, 76, 0.4);
+            background: rgba(201, 168, 76, 0.08);
+            transform: rotate(90deg);
+        }
+
+        .wiki-panel-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            transition-delay: 0.2s;
+        }
+
+        .wiki-panel.open .wiki-panel-body {
+            opacity: 1;
+        }
+
+        .wiki-iframe {
+            width: 100%;
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            min-height: 0;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .wiki-iframe.loaded {
+            opacity: 1;
+        }
+
+        .wiki-loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .wiki-loading-spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(201, 168, 76, 0.1);
+            border-top: 3px solid var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .wiki-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            gap: 12px;
+        }
+
+        .wiki-empty-icon {
+            font-size: 3rem;
+            opacity: 0.2;
+        }
+
+        .wiki-panel-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1999;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+
+        .wiki-panel-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.45); background-clip: content-box; }
+
+        @media (max-width: 700px) {
+            .map-title {
+                font-size: 1rem;
+                padding: 8px 16px;
+                letter-spacing: 3px;
+                top: 10px;
+            }
+            .map-title small { font-size: 0.5rem; }
+
+            .search-container {
+                top: 10px;
+                left: 52px;
+                width: calc(100% - 64px);
+            }
+
+            .compass { display: none; }
+
+            .wiki-panel {
+                width: 100%;
+                padding: 20px;
+            }
+
+            .wiki-panel-title {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div x-data="{ loaderHidden: false }">
+
+    <div class="loader" id="loader" x-show="!loaderHidden" x-transition:leave.opacity.duration.500ms>
+        <div class="loader-content">
+            <div class="loader-title">[[worldName]]</div>
+            <div class="loader-subtitle">{{map_loader_subtitle}}</div>
+            <div class="loader-spinner"></div>
+        </div>
+    </div>
+
+    <nav class="nav-bar">
+        <div class="nav-brand">
+            <img class="nav-logo" src="/map/[[favicon]]" alt="[[worldName]]">
+            <a href="/wiki/">{{nav_brand}}</a>
+        </div>
+        <div class="nav-links" id="navLinks">
+            <a href="/map/">{{nav_map}}</a>
+            <a href="/wiki/">{{nav_wiki}}</a>
+            <a href="/login/" id="navLogin">{{nav_login}}</a>
+        </div>
+    </nav>
+    <div class="search-container" id="searchContainer">
+        <div class="search-input-wrap">
+            <span class="search-icon">&#128270;</span>
+            <input type="text" class="search-input" id="searchInput" placeholder="{{map_search_placeholder}}" autocomplete="off">
+            <span class="search-clear" id="searchClear">&times;</span>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="compass">
+        <div class="compass-ring-outer">
+            <div class="compass-ring-inner">
+                <div class="compass-deco2"></div>
+                <div class="compass-deco"></div>
+                <span class="compass-n">N</span>
+                <div class="compass-point n major"></div>
+                <div class="compass-point ne"></div>
+                <div class="compass-point e major"></div>
+                <div class="compass-point se"></div>
+                <div class="compass-point s major"></div>
+                <div class="compass-point sw"></div>
+                <div class="compass-point w major"></div>
+                <div class="compass-point nw"></div>
+                <div class="compass-center"></div>
+            </div>
+        </div>
+    </div>
+    <div id="map"></div>
+
+    <div class="wiki-panel-overlay" id="wikiOverlay"></div>
+
+    <div class="wiki-panel" id="wikiPanel" aria-hidden="true">
+        <div class="wiki-panel-header">
+            <div class="wiki-panel-header-text">
+                <h2 class="wiki-panel-title" id="wikiTitle">{{map_panel_title}}</h2>
+                <p class="wiki-panel-desc" id="wikiDesc">{{map_panel_desc}}</p>
+            </div>
+            <button class="wiki-panel-close" id="wikiClose" tabindex="-1">&#10005;</button>
+        </div>
+        <div class="wiki-panel-body">
+            <div class="wiki-loading" id="wikiLoading">
+                <div class="wiki-loading-spinner"></div>
+                <span>{{map_loading_text}}</span>
+            </div>
+            <iframe class="wiki-iframe" id="wikiIframe" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            <div class="wiki-empty" id="wikiEmpty">
+                <div class="wiki-empty-icon">&#128214;</div>
+                <span>{{map_no_article}}</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        /* ---- branding loader ---- */
+        let brandingData = null;
+        fetch('/api/branding?' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                brandingData = data;
+                var root = document.documentElement;
+                var c = data.colors;
+                if (c.gold) root.style.setProperty('--gold', c.gold);
+                if (c.goldLight) root.style.setProperty('--gold-light', c.goldLight);
+                if (c.goldDark) root.style.setProperty('--gold-dark', c.goldDark);
+                if (c.bgDeep) root.style.setProperty('--bg-deep', c.bgDeep);
+                if (c.textPrimary) root.style.setProperty('--text-primary', c.textPrimary);
+                if (c.textSecondary) root.style.setProperty('--text-secondary', c.textSecondary);
+                if (c.borderGlow) root.style.setProperty('--border-glow', c.borderGlow);
+                if (c.radius) root.style.setProperty('--radius', c.radius);
+                if (data.worldName) {
+                    document.title = data.worldName + '{{map_title_suffix}}';
+                    var titleEls = document.querySelectorAll('.loader-title, .map-title');
+                    titleEls.forEach(function(el) {
+                        if (el.classList.contains('loader-title')) el.textContent = data.worldName;
+                    });
+                    var navBrand = document.querySelector('.nav-bar a[href="/wiki/"]');
+                    if (navBrand) navBrand.textContent = data.worldName + '{{nav_brand_suffix}}';
+                }
+            })
+            .catch(function() {});
+
+        const appRoot = document.querySelector('[x-data]');
+        const loader = document.getElementById('loader');
+        let readyCount = 0;
+
+        function checkReady() {
+            readyCount++;
+            if (readyCount >= 2) {
+                setTimeout(() => {
+                    if (appRoot && appRoot.__x) {
+                        appRoot.__x.$data.loaderHidden = true;
+                    } else {
+                        loader.classList.add('hidden');
+                    }
+                }, 300);
+            }
+        }
+
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -3,
+            maxZoom: 8,
+            zoomSnap: 0.25,
+            attributionControl: false,
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false
+        });
+
+        var imageWidth = 7648;
+        var imageHeight = 3808;
+        var mapImageFile = 'mappa.svg';
+        if (brandingData) {
+            if (brandingData.mapWidth) imageWidth = brandingData.mapWidth;
+            if (brandingData.mapHeight) imageHeight = brandingData.mapHeight;
+            if (brandingData.mapImage) mapImageFile = brandingData.mapImage;
+        }
+        const bounds = [[0, 0], [imageHeight, imageWidth]];
+
+        const img = new Image();
+        img.onload = function() {
+            L.imageOverlay(mapImageFile, bounds).addTo(map);
+            map.fitBounds(bounds);
+            setTimeout(() => { map.invalidateSize(); checkReady(); }, 500);
+        };
+        img.src = mapImageFile;
+
+        const compassEl = document.querySelector('.compass');
+        function updateCompass() {
+            const z = map.getZoom();
+            const t = (z - map.getMinZoom()) / (map.getMaxZoom() - map.getMinZoom());
+            compassEl.style.transform = 'scale(' + (0.75 + t * 0.7) + ')';
+        }
+        map.on('zoomend', updateCompass);
+        setTimeout(updateCompass, 600);
+
+
+
+        function makeIcon(hasWiki) {
+            return L.divIcon({
+                className: 'fantasy-marker',
+                html: `<div class="marker-pin${hasWiki ? ' has-wiki' : ''}"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+                popupAnchor: [0, -16]
+            });
+        }
+
+        const wikiPanel = document.getElementById('wikiPanel');
+        const wikiOverlay = document.getElementById('wikiOverlay');
+        const wikiTitle = document.getElementById('wikiTitle');
+        const wikiDesc = document.getElementById('wikiDesc');
+        const wikiIframe = document.getElementById('wikiIframe');
+        const wikiLoading = document.getElementById('wikiLoading');
+        const wikiEmpty = document.getElementById('wikiEmpty');
+        const wikiClose = document.getElementById('wikiClose');
+
+        let activeMarkerEl = null;
+
+        function openWiki(name, desc, wikiUrl, markerEl) {
+            wikiTitle.textContent = name;
+            wikiDesc.textContent = desc || '';
+
+            wikiIframe.classList.remove('loaded');
+            wikiIframe.src = '';
+
+            if (wikiUrl && wikiUrl.trim()) {
+                wikiIframe.style.display = 'flex';
+                wikiEmpty.style.display = 'none';
+                wikiLoading.style.display = 'flex';
+                wikiIframe.src = wikiUrl.trim();
+            } else {
+                wikiIframe.style.display = 'none';
+                wikiEmpty.style.display = 'flex';
+                wikiLoading.style.display = 'none';
+            }
+
+            if (activeMarkerEl) {
+                activeMarkerEl.classList.remove('active');
+            }
+            if (markerEl) {
+                markerEl.classList.add('active');
+                activeMarkerEl = markerEl;
+            }
+
+            wikiPanel.classList.add('open');
+            wikiPanel.setAttribute('aria-hidden', 'false');
+            wikiClose.removeAttribute('tabindex');
+            wikiOverlay.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+            wikiClose.focus();
+        }
+
+        function closeWiki() {
+            wikiPanel.classList.remove('open');
+            wikiPanel.setAttribute('aria-hidden', 'true');
+            wikiClose.setAttribute('tabindex', '-1');
+            wikiOverlay.classList.remove('visible');
+            document.body.style.overflow = '';
+            wikiIframe.src = '';
+            wikiIframe.classList.remove('loaded');
+
+            if (activeMarkerEl) {
+                activeMarkerEl.classList.remove('active');
+                activeMarkerEl = null;
+            }
+
+            map.closePopup();
+        }
+
+        wikiIframe.addEventListener('load', function() {
+            wikiLoading.style.display = 'none';
+            wikiIframe.classList.add('loaded');
+        });
+
+        wikiIframe.addEventListener('error', function() {
+            wikiLoading.style.display = 'none';
+            wikiIframe.classList.add('loaded');
+        });
+
+        wikiClose.addEventListener('click', closeWiki);
+        wikiOverlay.addEventListener('click', closeWiki);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeWiki();
+        });
+
+        map.on('click', closeWiki);
+
+        const allMarkers = [];
+        const searchInput = document.getElementById('searchInput');
+        const searchResults = document.getElementById('searchResults');
+        const searchClear = document.getElementById('searchClear');
+        let searchIndex = -1;
+
+        fetch('markers.json?' + Date.now())
+            .then(response => {
+                if (!response.ok) throw new Error("{{map_error_load_markers}}");
+                return response.json();
+            })
+            .then(markersData => {
+                markersData.forEach(m => {
+                    const hasWiki = !!(m.wiki && m.wiki.trim());
+                    const marker = L.marker([m.lat, m.lng], { icon: makeIcon(hasWiki), keyboard: true, alt: m.name }).addTo(map);
+                    marker.bindTooltip(m.name, { direction: 'top', offset: [0, -20], className: 'fantasy-tooltip' });
+
+                    marker.markerData = m;
+                    allMarkers.push(marker);
+
+                    marker.on('click', function() {
+                        const el = this._icon;
+                        openWiki(m.name, m.desc, m.wiki, el);
+                    });
+
+                    marker.on('add', function() {
+                        const el = this._icon;
+                        if (!el) return;
+                        el.setAttribute('role', 'button');
+                        el.setAttribute('tabindex', '0');
+                        el.setAttribute('aria-label', m.name + (hasWiki ? ' — {{map_marker_open_wiki}}' : ' — {{map_marker_no_wiki}}'));
+                        el.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (hasWiki && m.wiki.trim()) {
+                                    window.location.href = m.wiki.trim();
+                                } else {
+                                    openWiki(m.name, m.desc, m.wiki, el);
+                                }
+                            }
+                        });
+                    });
+                });
+                checkReady();
+            })
+            .catch(error => {
+                console.error("{{map_error_generic}}", error);
+                checkReady();
+            });
+
+        function filterMarkers(query) {
+            const q = query.toLowerCase().trim();
+            const results = document.getElementById('searchResults');
+            results.innerHTML = '';
+
+            if (!q) {
+                results.classList.remove('open');
+                searchClear.classList.remove('visible');
+                allMarkers.forEach(m => {
+                    if (m._icon) m._icon.style.opacity = '1';
+                });
+                searchIndex = -1;
+                return;
+            }
+
+            searchClear.classList.add('visible');
+            const matches = allMarkers.filter(m => {
+                const data = m.markerData || {};
+                return (data.name && data.name.toLowerCase().includes(q)) ||
+                       (data.desc && data.desc.toLowerCase().includes(q));
+            });
+
+            if (matches.length === 0) {
+                results.innerHTML = '<div class="search-no-results">{{map_no_results}}</div>';
+                results.classList.add('open');
+                allMarkers.forEach(m => { if (m._icon) m._icon.style.opacity = '0.15'; });
+                searchIndex = -1;
+                return;
+            }
+
+            allMarkers.forEach(m => { if (m._icon) m._icon.style.opacity = m.markerData && matches.includes(m) ? '1' : '0.15'; });
+
+            matches.forEach((m, i) => {
+                const data = m.markerData || {};
+                const div = document.createElement('div');
+                div.className = 'search-result-item' + (i === 0 ? ' highlight' : '');
+                div.innerHTML = '<span class="result-dot"></span><span class="result-name">' + (data.name || '?') + '</span>';
+                if (data.desc) div.innerHTML += '<span class="result-desc">' + data.desc + '</span>';
+                div.dataset.index = i;
+                div.addEventListener('click', function() { selectResult(matches, parseInt(this.dataset.index)); });
+                div.addEventListener('mouseenter', function() {
+                    document.querySelectorAll('.search-result-item').forEach(el => el.classList.remove('highlight'));
+                    this.classList.add('highlight');
+                    searchIndex = parseInt(this.dataset.index);
+                });
+                results.appendChild(div);
+            });
+
+            results.classList.add('open');
+            searchIndex = 0;
+        }
+
+        function selectResult(matches, index) {
+            if (!matches || index < 0 || index >= matches.length) return;
+            const marker = matches[index];
+            const data = marker.markerData || {};
+            searchInput.value = data.name || '';
+            filterMarkers(searchInput.value);
+            searchResults.classList.remove('open');
+            searchClear.classList.remove('visible');
+            map.panTo(marker.getLatLng(), { animate: true, duration: 0.5 });
+            if (marker._icon) {
+                marker._icon.classList.add('active');
+                marker._icon.style.opacity = '1';
+                if (activeMarkerEl) activeMarkerEl.classList.remove('active');
+                activeMarkerEl = marker._icon;
+            }
+            openWiki(data.name, data.desc, data.wiki, marker._icon);
+        }
+
+        let searchRaf = null;
+        searchInput.addEventListener('input', function() {
+            if (searchRaf) cancelAnimationFrame(searchRaf);
+            const v = this.value;
+            searchRaf = requestAnimationFrame(function() { filterMarkers(v); });
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length > 0 && searchIndex >= 0) {
+                    const match = allMarkers.filter(m => (m.markerData || {}).name && m._icon.style.opacity !== '0.15');
+                    selectResult(match, searchIndex);
+                }
+            }
+            if (e.key === 'Escape') {
+                searchResults.classList.remove('open');
+                searchClear.classList.remove('visible');
+                searchInput.blur();
+                allMarkers.forEach(m => { if (m._icon) m._icon.style.opacity = '1'; });
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length === 0) return;
+                searchIndex = Math.min(searchIndex + 1, items.length - 1);
+                items.forEach((el, i) => el.classList.toggle('highlight', i === searchIndex));
+                items[searchIndex].scrollIntoView({ block: 'nearest' });
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const items = searchResults.querySelectorAll('.search-result-item');
+                if (items.length === 0) return;
+                searchIndex = Math.max(searchIndex - 1, 0);
+                items.forEach((el, i) => el.classList.toggle('highlight', i === searchIndex));
+                items[searchIndex].scrollIntoView({ block: 'nearest' });
+            }
+        });
+
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            filterMarkers('');
+            searchInput.focus();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                searchResults.classList.remove('open');
+                searchClear.classList.remove('visible');
+                allMarkers.forEach(m => { if (m._icon) m._icon.style.opacity = '1'; });
+            }
+        });
+
+        /* session check for nav */
+        fetch('/api/session')
+            .then(function(r) { return r.json(); })
+            .then(function(s) {
+                var navLogin = document.getElementById('navLogin');
+                if (s.admin) {
+                    var navLinks = document.getElementById('navLinks');
+                    var settingsLink = document.createElement('a');
+                    settingsLink.href = '/settings';
+                    settingsLink.textContent = '{{nav_settings}}';
+                    navLinks.insertBefore(settingsLink, navLogin);
+                    var editorLink = document.createElement('a');
+                    editorLink.href = '/map/edit';
+                    editorLink.textContent = '{{nav_editor}}';
+                    navLinks.insertBefore(editorLink, navLogin);
+                    navLogin.href = '/logout/';
+                    navLogin.textContent = '{{nav_logout}}';
+                    navLogin.style.color = '#7a7a7a';
+                }
+            })
+            .catch(function() {});
+    </script>
+</div>
+</body>
+</html>

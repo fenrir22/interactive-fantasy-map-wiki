@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{settings_page_title}}</title>
+    <link rel="icon" type="image/svg+xml" href="/map/favicon.svg">
+    <meta property="og:title" content="{{settings_og_title}}">
+    <meta property="og:description" content="{{settings_og_description}}">
+    <meta property="og:image" content="/map/favicon.svg">
+    <meta name="twitter:card" content="summary">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --gold: #c9a84c;
+            --gold-light: #e8c44a;
+            --gold-dark: #8a6e2b;
+            --bg-deep: #080c1a;
+            --bg-card: rgba(12, 16, 32, 0.72);
+            --text-primary: #f0e6d3;
+            --text-secondary: #a8987a;
+            --border-glow: rgba(201, 168, 76, 0.15);
+            --border-glow-strong: rgba(201, 168, 76, 0.28);
+            --radius: 12px;
+        }
+        body {
+            font-family: 'Cormorant Garamond', serif;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 45%),
+                radial-gradient(ellipse at 80% 100%, rgba(201, 168, 76, 0.03) 0%, transparent 40%),
+                var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.7;
+            min-height: 100vh;
+            padding-top: 58px;
+        }
+        .settings-wrap { max-width: 800px; margin: 0 auto; padding: 30px 40px 60px; }
+        .nav-bar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 58px;
+            padding: 0 28px;
+            background: rgba(8, 12, 26, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border-glow);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+        }
+        .nav-bar::after {
+            content: ''; position: absolute; bottom: -1px; left: 5%; right: 5%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+            opacity: 0.5;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 14px; }
+        .nav-logo {
+            width: 30px; height: 30px; border-radius: 6px;
+            object-fit: contain;
+            background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold-dark));
+            box-shadow: 0 0 14px rgba(201, 168, 76, 0.25);
+        }
+        .nav-bar a {
+            font-family: 'Cinzel', serif; color: var(--gold); text-decoration: none;
+            font-size: 0.82rem; letter-spacing: 1.2px; transition: all 0.25s ease;
+            text-shadow: 0 0 10px rgba(201, 168, 76, 0.12);
+        }
+        .nav-bar a:hover { color: var(--gold-light); }
+        .nav-bar .nav-links { display: flex; gap: 22px; align-items: center; }
+        h1 {
+            font-family: 'Cinzel', serif; font-size: 2rem; color: var(--gold);
+            margin: 40px 0 8px; letter-spacing: 2px;
+            border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;
+            text-shadow: 0 0 16px rgba(201, 168, 76, 0.14);
+        }
+        .section {
+            margin: 32px 0;
+            padding: 24px 28px;
+            background: rgba(10, 14, 28, 0.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
+            box-shadow: 0 12px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            position: relative;
+        }
+        .section::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.25), transparent);
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .section-title {
+            font-family: Cinzel, serif;
+            font-size: 1rem;
+            color: var(--gold-light);
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-family: Cinzel, serif;
+            font-size: 0.7rem;
+            letter-spacing: 1.5px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"] {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .color-swatch {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-deep);
+            position: relative;
+            overflow: hidden;
+            border: 2px solid var(--border-glow);
+            padding: 0;
+        }
+        .color-swatch:hover {
+            transform: scale(1.12);
+            box-shadow: 0 0 20px rgba(201,168,76,0.15);
+        }
+        .color-swatch.is-radius {
+            border: 2px dashed var(--border-glow);
+            font-family: monospace;
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+            background: rgba(0,0,0,0.15);
+        }
+        .color-row input[type="color"] {
+            width: 40px; height: 40px;
+            padding: 2px;
+            border: 2px solid var(--border-glow);
+            border-radius: 10px;
+            background: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .color-row input[type="color"]:hover {
+            border-color: var(--gold);
+        }
+        .color-row input[type="text"] {
+            flex: 1;
+            font-family: monospace !important;
+            font-size: 0.85rem !important;
+        }
+        .theme-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .theme-preview {
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all 0.35s ease;
+            background: var(--bg-deep);
+        }
+        .theme-preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-glow);
+        }
+        .theme-preview-title {
+            font-family: Cinzel, serif;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            color: var(--gold);
+        }
+        .theme-preview-nav {
+            display: flex;
+            gap: 10px;
+            font-family: Cinzel, serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.5px;
+        }
+        .theme-preview-nav span {
+            color: var(--text-secondary);
+        }
+        .theme-preview-nav .active {
+            color: var(--gold);
+        }
+        .theme-preview-body {
+            padding: 16px;
+        }
+        .theme-preview-body .tp-title {
+            font-family: Cinzel, serif;
+            font-size: 1.1rem;
+            color: var(--gold);
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .theme-preview-body .tp-text {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .theme-preview-body .tp-box {
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            background: rgba(255,255,255,0.015);
+        }
+        .palette-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .palette-swatch {
+            width: 32px; height: 32px;
+            border-radius: 6px;
+            border: 1px solid var(--border-glow);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .palette-swatch:hover {
+            transform: scale(1.15);
+        }
+        .favicon-row {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        .favicon-preview-wrap {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            border: 2px solid var(--border-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+            flex-shrink: 0;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+        }
+        .favicon-preview-wrap:hover {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(201,168,76,0.1);
+        }
+        .favicon-preview {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+        }
+        .favicon-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .favicon-upload-area {
+            display: inline-block;
+            padding: 10px 24px;
+            border: 1px dashed var(--border-glow);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-style: italic;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        .favicon-upload-area:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(201,168,76,0.03);
+        }
+        @media (max-width: 500px) {
+            .favicon-row { flex-direction: column; align-items: flex-start; }
+        }
+        .map-upload-area {
+            border: 2px dashed var(--border-glow);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .map-upload-area:hover {
+            border-color: var(--gold);
+            background: rgba(201, 168, 76, 0.03);
+        }
+        .map-upload-area.has-image {
+            border-style: solid;
+        }
+        .map-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+        }
+        .map-preview.visible { display: inline-block; }
+        .map-upload-icon {
+            font-size: 2.5rem;
+            opacity: 0.3;
+            margin-bottom: 8px;
+        }
+        .map-upload-text {
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+        .btn {
+            font-family: Cinzel, serif;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            padding: 10px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-weight: 700;
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #b8860b, var(--gold));
+            color: #0a0e1a;
+        }
+        .btn-gold:hover { background: linear-gradient(135deg, var(--gold), var(--gold-light)); }
+        .btn-outline {
+            background: transparent;
+            color: var(--gold);
+            border: 1px solid var(--border-glow);
+        }
+        .btn-outline:hover {
+            background: rgba(201, 168, 76, 0.08);
+            border-color: var(--gold);
+        }
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+        .save-status {
+            font-style: italic;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+            margin-top: 16px;
+        }
+        .save-status.success { color: #6b9a6b; }
+        .save-status.error { color: #c97a6b; }
+        .save-status.saving { color: var(--gold); }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,0.45); background-clip: content-box; }
+
+        @media (max-width: 700px) {
+            .settings-wrap { padding: 16px; }
+            .nav-bar { padding: 0 16px; }
+            .nav-bar .nav-links { gap: 14px; }
+            .nav-bar a { font-size: 0.75rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .theme-grid { grid-template-columns: 1fr; }
+        }
+        .footer-credits {
+            position:fixed; bottom:12px; right:16px;
+            font-size:0.8rem; color:rgba(168,152,122,0.4);
+            font-style:italic; letter-spacing:0.5px;
+            z-index:999; pointer-events:none;
+            font-family:'Cormorant Garamond',serif;
+        }
+        .og-preview-card {
+            background: rgba(0,0,0,0.15);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            max-width: 400px;
+            transition: all 0.3s;
+        }
+        .og-preview-img {
+            width: 100%;
+            height: 140px;
+            background: rgba(201,168,76,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            border-bottom: 1px solid var(--border-glow);
+            overflow: hidden;
+        }
+        .og-preview-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .og-preview-body {
+            padding: 12px 16px;
+        }
+        .og-preview-url {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .og-preview-title {
+            font-family: Cinzel, serif;
+            font-size: 0.95rem;
+            color: var(--gold);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+        .og-preview-desc {
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            line-height: 1.4;
+            opacity: 0.8;
+        }
+        .og-image-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .og-image-preview {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            border: 2px solid var(--border-glow);
+            overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.2);
+        }
+        .og-image-preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .og-image-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .og-upload-area {
+            display: inline-block;
+            padding: 8px 18px;
+            border: 1px dashed var(--border-glow);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-style: italic;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .og-upload-area:hover {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(201,168,76,0.03);
+        }
+        textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            border: 1px solid var(--border-glow);
+            border-radius: 8px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-brand">
+            <img class="nav-logo" src="/map/[[favicon]]" alt="[[worldName]]">
+            <a href="/wiki/">{{nav_brand}}</a>
+        </div>
+        <div class="nav-links">
+            <a href="/map/">{{nav_map}}</a>
+            <a href="/map/edit">{{nav_editor}}</a>
+            <a href="/settings">{{nav_settings}}</a>
+            <a href="/wiki/">{{nav_home}}</a>
+            <a href="/logout/" style="color:#7a7a7a">{{nav_logout}}</a>
+        </div>
+    </nav>
+    <div class="settings-wrap">
+        <h1>{{settings_heading}}</h1>
+        <p style="color:var(--text-secondary);font-style:italic;margin-bottom:24px">{{settings_subtitle}}</p>
+
+        <div class="section">
+            <div class="section-title">{{settings_section_world_name}}</div>
+            <div class="form-group">
+                <label for="worldName">{{settings_label_world_name}}</label>
+                <input type="text" id="worldName" placeholder="{{settings_placeholder_world_name}}">
+            </div>
+            <div class="form-group">
+                <label for="wikiSubtitle">{{settings_label_wiki_subtitle}}</label>
+                <input type="text" id="wikiSubtitle" placeholder="{{settings_placeholder_wiki_subtitle}}">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">{{settings_section_map}}</div>
+            <div class="form-group">
+                <label>{{settings_label_map_image}}</label>
+                <div class="map-upload-area" id="mapUploadArea">
+                    <div class="map-upload-icon" id="mapUploadIcon">&#127758;</div>
+                    <div class="map-upload-text" id="mapUploadText">{{settings_map_upload_text}}</div>
+                    <img class="map-preview" id="mapPreview" alt="{{settings_map_preview_alt}}">
+                </div>
+                <input type="file" id="mapFileInput" accept=".svg,.png,.jpg,.jpeg,.webp" style="display:none">
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="mapWidth">{{settings_label_map_width}}</label>
+                    <input type="number" id="mapWidth" min="100" max="50000">
+                </div>
+                <div class="form-group">
+                    <label for="mapHeight">{{settings_label_map_height}}</label>
+                    <input type="number" id="mapHeight" min="100" max="50000">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">{{settings_section_favicon}}</div>
+            <div class="favicon-row">
+                <div class="favicon-preview-wrap" id="faviconPreviewWrap">
+                    <img class="favicon-preview" id="faviconPreview" src="/map/favicon.svg" alt="Favicon">
+                </div>
+                <div class="favicon-info">
+                    <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:12px">{{settings_favicon_description}}</p>
+                    <div class="favicon-upload-area" id="faviconUploadArea">
+                        <span id="faviconUploadText">{{settings_favicon_upload_text}}</span>
+                    </div>
+                    <input type="file" id="faviconFileInput" accept=".svg,.png,.ico,.jpg,.jpeg,.webp" style="display:none">
+                    <button class="btn btn-outline" id="resetFaviconBtn" style="margin-top:8px;font-size:0.7rem;padding:6px 14px">{{settings_favicon_reset_btn}}</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">{{settings_section_social}}</div>
+            <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:16px">{{settings_social_description}}</p>
+            <div class="og-preview-card" id="ogPreview">
+                <div class="og-preview-img" id="ogPreviewImg"><span style="opacity:0.3">&#127758;</span></div>
+                <div class="og-preview-body">
+                    <div class="og-preview-url" id="ogPreviewUrl">{{settings_og_preview_url}}</div>
+                    <div class="og-preview-title" id="ogPreviewTitle">{{settings_og_preview_title}}</div>
+                    <div class="og-preview-desc" id="ogPreviewDesc">{{settings_og_preview_desc}}</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="ogTitle">{{settings_label_og_title}}</label>
+                <input type="text" id="ogTitle" placeholder="{{settings_placeholder_og_title}}">
+            </div>
+            <div class="form-group">
+                <label for="ogDescription">{{settings_label_og_description}}</label>
+                <textarea id="ogDescription" rows="3" placeholder="{{settings_placeholder_og_description}}"></textarea>
+            </div>
+            <div class="form-group">
+                <label>{{settings_label_og_image}}</label>
+                <div class="og-image-row">
+                    <div class="og-image-preview" id="ogImagePreviewWrap">
+                        <img class="og-image-preview-img" id="ogImagePreview" src="" alt="">
+                    </div>
+                    <div class="og-image-info">
+                        <div class="og-upload-area" id="ogUploadArea">
+                            <span id="ogUploadText">{{settings_og_upload_text}}</span>
+                        </div>
+                        <input type="file" id="ogFileInput" accept=".svg,.png,.jpg,.jpeg,.webp" style="display:none">
+                        <button class="btn btn-outline" id="resetOgBtn" style="margin-top:6px;font-size:0.7rem;padding:5px 12px">{{settings_og_remove_btn}}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">{{settings_section_colors}}</div>
+            <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:16px">{{settings_colors_description}}</p>
+
+            <div class="theme-grid">
+                <div class="theme-preview" id="themePreview">
+                    <div class="theme-preview-header">
+                        <span class="theme-preview-title" id="tpTitle">[[worldName]]</span>
+                        <div class="theme-preview-nav">
+                            <span>{{settings_preview_map}}</span>
+                            <span style="color:var(--gold)">{{settings_preview_wiki}}</span>
+                        </div>
+                    </div>
+                    <div class="theme-preview-body">
+                        <div class="tp-title" id="tpHeading">{{settings_preview_world_name}}</div>
+                        <div class="tp-text" id="tpText">{{settings_preview_welcome}}</div>
+                        <div class="tp-box" id="tpBox">{{settings_preview_content_example}}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="palette-row" id="paletteRow"></div>
+                    <div id="colorFields"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-gold" id="saveBtn">{{settings_btn_save}}</button>
+            <button class="btn btn-outline" id="resetBtn">{{settings_btn_reset}}</button>
+        </div>
+        <div class="save-status" id="saveStatus"></div>
+    </div>
+
+    <script>
+        const colorDefs = [
+            { key: 'gold', label: '{{settings_color_gold}}' },
+            { key: 'goldLight', label: '{{settings_color_gold_light}}' },
+            { key: 'goldDark', label: '{{settings_color_gold_dark}}' },
+            { key: 'bgDeep', label: '{{settings_color_bg_deep}}' },
+            { key: 'textPrimary', label: '{{settings_color_text_primary}}' },
+            { key: 'textSecondary', label: '{{settings_color_text_secondary}}' },
+            { key: 'borderGlow', label: '{{settings_color_border_glow}}' },
+            { key: 'radius', label: '{{settings_color_radius}}' },
+        ];
+
+        const defaults = {
+            worldName: '[[worldName]]',
+            wikiSubtitle: '',
+            mapImage: 'mappa.svg',
+            mapWidth: 7648,
+            mapHeight: 3808,
+            colors: {
+                gold: '#c9a84c',
+                goldLight: '#e8c44a',
+                goldDark: '#8a6e2b',
+                bgDeep: '#080c1a',
+                textPrimary: '#f0e6d3',
+                textSecondary: '#a8987a',
+                borderGlow: 'rgba(201, 168, 76, 0.15)',
+                radius: '12px'
+            }
+        };
+
+        let currentData = {};
+        let previewTimer = null;
+
+        function getColors() {
+            var c = {};
+            colorDefs.forEach(function(def) {
+                c[def.key] = getColorValue(def.key);
+            });
+            return c;
+        }
+
+        function updateThemePreview() {
+            var c = getColors();
+            var preview = document.getElementById('themePreview');
+            preview.style.setProperty('--gold', c.gold || '#c9a84c');
+            preview.style.setProperty('--gold-light', c.goldLight || '#e8c44a');
+            preview.style.setProperty('--gold-dark', c.goldDark || '#8a6e2b');
+            preview.style.setProperty('--bg-deep', c.bgDeep || '#080c1a');
+            preview.style.setProperty('--text-primary', c.textPrimary || '#f0e6d3');
+            preview.style.setProperty('--text-secondary', c.textSecondary || '#a8987a');
+            preview.style.setProperty('--border-glow', c.borderGlow || 'rgba(201,168,76,0.15)');
+            preview.style.setProperty('--radius', c.radius || '12px');
+            document.getElementById('tpTitle').textContent = document.getElementById('worldName').value || '[[worldName]]';
+        }
+
+        function schedulePreview() {
+            if (previewTimer) clearTimeout(previewTimer);
+            previewTimer = setTimeout(updateThemePreview, 50);
+        }
+
+        function buildPalette() {
+            var row = document.getElementById('paletteRow');
+            row.innerHTML = '';
+            colorDefs.forEach(function(def) {
+                if (def.key === 'radius') return;
+                var sw = document.createElement('div');
+                sw.className = 'palette-swatch';
+                sw.id = 'ps-' + def.key;
+                sw.dataset.key = def.key;
+                sw.title = def.label;
+                sw.addEventListener('click', function() {
+                    var key = this.dataset.key;
+                    var inp = document.getElementById('color-' + key);
+                    if (inp) inp.click();
+                });
+                row.appendChild(sw);
+            });
+        }
+
+        function updatePalette() {
+            colorDefs.forEach(function(def) {
+                if (def.key === 'radius') return;
+                var sw = document.getElementById('ps-' + def.key);
+                if (!sw) return;
+                var val = getColorValue(def.key);
+                sw.style.background = val || 'transparent';
+            });
+        }
+
+        function buildColorFields() {
+            const container = document.getElementById('colorFields');
+            container.innerHTML = '';
+            colorDefs.forEach(function(def) {
+                const div = document.createElement('div');
+                div.className = 'form-group';
+                const label = document.createElement('label');
+                label.htmlFor = 'text-' + def.key;
+                label.textContent = def.label;
+                const row = document.createElement('div');
+                row.className = 'color-row';
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.id = 'color-' + def.key;
+                colorInput.dataset.key = def.key;
+                const textInput = document.createElement('input');
+                textInput.type = 'text';
+                textInput.id = 'text-' + def.key;
+                textInput.dataset.key = def.key;
+                textInput.placeholder = def.key === 'radius' ? '{{settings_placeholder_color_radius}}' : '{{settings_placeholder_color_hex}}';
+                row.appendChild(colorInput);
+                row.appendChild(textInput);
+                div.appendChild(label);
+                div.appendChild(row);
+                container.appendChild(div);
+            });
+
+            document.querySelectorAll('#colorFields input[type="color"]').forEach(function(inp) {
+                inp.addEventListener('input', function() {
+                    var key = this.dataset.key;
+                    var textInp = document.getElementById('text-' + key);
+                    if (textInp) textInp.value = this.value;
+                    updatePalette();
+                    schedulePreview();
+                });
+            });
+
+            document.querySelectorAll('#colorFields input[type="text"]').forEach(function(inp) {
+                inp.addEventListener('input', function() {
+                    updatePalette();
+                    schedulePreview();
+                });
+                inp.addEventListener('blur', function() {
+                    var key = this.dataset.key;
+                    var val = this.value.trim();
+                    var colorInp = document.getElementById('color-' + key);
+                    if (colorInp && val.startsWith('#')) {
+                        try { colorInp.value = val; } catch(e) {}
+                    }
+                });
+            });
+        }
+
+        function setColorValue(key, val) {
+            var textInput = document.getElementById('text-' + key);
+            var colorInput = document.getElementById('color-' + key);
+            if (textInput) textInput.value = val;
+            if (colorInput && val && val.startsWith('#')) {
+                try { colorInput.value = val; } catch(e) {}
+            }
+        }
+
+        function getColorValue(key) {
+            var textInput = document.getElementById('text-' + key);
+            return textInput ? textInput.value : '';
+        }
+
+        function loadBranding() {
+            return fetch('/api/branding?' + Date.now()).then(function(r) { return r.json(); });
+        }
+
+        function updateOgPreview() {
+            var title = document.getElementById('ogTitle').value.trim() || '[[worldName]]';
+            var desc = document.getElementById('ogDescription').value.trim() || '{{settings_og_preview_desc}}';
+            document.getElementById('ogPreviewTitle').textContent = title;
+            document.getElementById('ogPreviewDesc').textContent = desc;
+        }
+
+        function applyToForm(data) {
+            currentData = data;
+            document.getElementById('worldName').value = data.worldName || '';
+            document.getElementById('wikiSubtitle').value = data.wikiSubtitle || '';
+            document.getElementById('mapWidth').value = data.mapWidth || 7648;
+            document.getElementById('mapHeight').value = data.mapHeight || 3808;
+            document.getElementById('ogTitle').value = data.ogTitle || '';
+            document.getElementById('ogDescription').value = data.ogDescription || '';
+            if (data.ogImage) {
+                var ogPrev = document.getElementById('ogImagePreview');
+                ogPrev.src = '/map/' + data.ogImage;
+                document.getElementById('ogImagePreviewWrap').querySelector('img').style.display = '';
+            } else {
+                document.getElementById('ogImagePreviewWrap').querySelector('img').style.display = 'none';
+            }
+            if (data.mapImage) {
+                var preview = document.getElementById('mapPreview');
+                preview.src = '/map/' + data.mapImage;
+                preview.classList.add('visible');
+                document.getElementById('mapUploadArea').classList.add('has-image');
+                document.getElementById('mapUploadIcon').style.display = 'none';
+                document.getElementById('mapUploadText').textContent = '{{settings_map_change_text}}';
+            }
+            Object.keys(data.colors || {}).forEach(function(key) {
+                setColorValue(key, data.colors[key]);
+            });
+            updatePalette();
+            updateThemePreview();
+            updateOgPreview();
+        }
+
+        function collectFormData() {
+            var data = {
+                worldName: document.getElementById('worldName').value.trim() || 'Mondo',
+                wikiSubtitle: document.getElementById('wikiSubtitle').value.trim(),
+                mapWidth: parseInt(document.getElementById('mapWidth').value) || 7648,
+                mapHeight: parseInt(document.getElementById('mapHeight').value) || 3808,
+                ogTitle: document.getElementById('ogTitle').value.trim(),
+                ogDescription: document.getElementById('ogDescription').value.trim(),
+                colors: {}
+            };
+            colorDefs.forEach(function(def) {
+                data.colors[def.key] = getColorValue(def.key);
+            });
+            return data;
+        }
+
+        function setStatus(msg, type) {
+            var el = document.getElementById('saveStatus');
+            el.textContent = msg;
+            el.className = 'save-status ' + (type || '');
+        }
+
+        buildColorFields();
+        buildPalette();
+        loadBranding().then(applyToForm).catch(function() {
+            applyToForm(defaults);
+        });
+
+        document.getElementById('worldName').addEventListener('input', function() {
+            document.getElementById('tpTitle').textContent = this.value || '[[worldName]]';
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            var data = collectFormData();
+            setStatus('{{settings_status_saving}}', 'saving');
+            fetch('/api/branding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function() {
+                setStatus('{{settings_status_saved}}', 'success');
+                updateThemePreview();
+            }).catch(function() {
+                setStatus('{{settings_status_save_error}}', 'error');
+            });
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            if (!confirm('{{settings_confirm_reset}}')) return;
+            applyToForm(defaults);
+            fetch('/api/branding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(defaults)
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function() {
+                setStatus('{{settings_status_reset_done}}', 'success');
+            }).catch(function() {
+                setStatus('{{settings_status_reset_error}}', 'error');
+            });
+        });
+
+        document.getElementById('mapUploadArea').addEventListener('click', function() {
+            document.getElementById('mapFileInput').click();
+        });
+
+        document.getElementById('mapFileInput').addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            var fd = new FormData();
+            fd.append('mapImage', file);
+            setStatus('{{settings_status_uploading_map}}', 'saving');
+            fetch('/api/branding/map', {
+                method: 'POST',
+                body: fd
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(resp) {
+                var preview = document.getElementById('mapPreview');
+                preview.src = '/map/' + resp.filename + '?' + Date.now();
+                preview.classList.add('visible');
+                document.getElementById('mapUploadArea').classList.add('has-image');
+                document.getElementById('mapUploadIcon').style.display = 'none';
+                document.getElementById('mapUploadText').textContent = '{{settings_map_change_text}}';
+                setStatus('{{settings_status_map_uploaded}}', 'success');
+            }).catch(function() {
+                setStatus('{{settings_status_map_upload_error}}', 'error');
+            });
+            this.value = '';
+        });
+
+        function updateFaviconPreview(src) {
+            var preview = document.getElementById('faviconPreview');
+            preview.src = src + '?' + Date.now();
+        }
+
+        function setDefaultFavicon() {
+            var preview = document.getElementById('faviconPreview');
+            preview.src = '/map/favicon.svg?' + Date.now();
+            document.getElementById('faviconUploadText').textContent = '{{settings_favicon_upload_text}}';
+            fetch('/api/branding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favicon: 'favicon.svg' })
+            }).catch(function() {});
+        }
+
+        document.getElementById('ogTitle').addEventListener('input', updateOgPreview);
+        document.getElementById('ogDescription').addEventListener('input', updateOgPreview);
+
+        document.getElementById('ogUploadArea').addEventListener('click', function() {
+            document.getElementById('ogFileInput').click();
+        });
+
+        document.getElementById('ogFileInput').addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            var fd = new FormData();
+            fd.append('ogImage', file);
+            setStatus('{{settings_status_uploading_og}}', 'saving');
+            fetch('/api/branding/og-image', {
+                method: 'POST',
+                body: fd
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(resp) {
+                var prev = document.getElementById('ogImagePreview');
+                prev.src = '/map/' + resp.filename + '?' + Date.now();
+                prev.style.display = '';
+                document.getElementById('ogUploadText').textContent = resp.filename;
+                setStatus('{{settings_status_og_uploaded}}', 'success');
+            }).catch(function() {
+                setStatus('{{settings_status_og_upload_error}}', 'error');
+            });
+            this.value = '';
+        });
+
+        document.getElementById('resetOgBtn').addEventListener('click', function() {
+            if (!confirm('{{settings_confirm_remove_og}}')) return;
+            document.getElementById('ogImagePreview').src = '';
+            document.getElementById('ogImagePreview').style.display = 'none';
+            document.getElementById('ogUploadText').textContent = '{{settings_og_upload_text}}';
+            fetch('/api/branding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ogImage: '' })
+            }).catch(function() {});
+            setStatus('{{settings_status_og_removed}}', 'success');
+        });
+
+        document.getElementById('faviconUploadArea').addEventListener('click', function() {
+            document.getElementById('faviconFileInput').click();
+        });
+
+        document.getElementById('faviconFileInput').addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            var fd = new FormData();
+            fd.append('favicon', file);
+            setStatus('{{settings_status_uploading_favicon}}', 'saving');
+            fetch('/api/branding/favicon', {
+                method: 'POST',
+                body: fd
+            }).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function(resp) {
+                updateFaviconPreview('/map/' + resp.filename);
+                document.getElementById('faviconUploadText').textContent = resp.filename;
+                setStatus('{{settings_status_favicon_uploaded}}', 'success');
+            }).catch(function() {
+                setStatus('{{settings_status_favicon_upload_error}}', 'error');
+            });
+            this.value = '';
+        });
+
+        document.getElementById('resetFaviconBtn').addEventListener('click', function() {
+            if (!confirm('{{settings_confirm_reset_favicon}}')) return;
+            setDefaultFavicon();
+            setStatus('{{settings_status_favicon_reset}}', 'success');
+        });
+
+        loadBranding().then(function(data) {
+            if (data.favicon && data.favicon !== 'favicon.svg') {
+                updateFaviconPreview('/map/' + data.favicon);
+                document.getElementById('faviconUploadText').textContent = data.favicon;
+            }
+            if (data.ogImage) {
+                var ogPrev = document.getElementById('ogImagePreview');
+                ogPrev.src = '/map/' + data.ogImage + '?' + Date.now();
+                ogPrev.style.display = '';
+                document.getElementById('ogUploadText').textContent = data.ogImage;
+            }
+        });
+    </script>
+    <div class="footer-credits">{{footer_credits}}</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "worldName": "Aetherion",
+  "mapImage": "mappa.svg",
+  "mapWidth": 7648,
+  "mapHeight": 3808,
+  "colors": {
+    "gold": "#c9a84c",
+    "goldLight": "#e8c44a",
+    "goldDark": "#8a6e2b",
+    "bgDeep": "#080c1a",
+    "textPrimary": "#f0e6d3",
+    "textSecondary": "#a8987a",
+    "borderGlow": "rgba(201, 168, 76, 0.15)",
+    "radius": "12px"
+  }
+}

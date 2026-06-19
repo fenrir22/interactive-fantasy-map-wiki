@@ -1,0 +1,694 @@
+:root {
+    --gold: #c9a84c;
+    --gold-light: #e8c44a;
+    --gold-dark: #8a6e2b;
+    --bg-deep: #080c1a;
+    --bg-card: rgba(12, 16, 32, 0.72);
+    --bg-editor: rgba(10, 14, 28, 0.55);
+    --text-primary: #f0e6d3;
+    --text-secondary: #a8987a;
+    --border-glow: rgba(201, 168, 76, 0.15);
+    --border-glow-strong: rgba(201, 168, 76, 0.28);
+    --radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+html,
+body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+body {
+    background:
+        radial-gradient(ellipse at 20% 0%, rgba(201, 168, 76, 0.04) 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 100%, rgba(201, 168, 76, 0.03) 0%, transparent 40%),
+        var(--bg-deep);
+}
+
+#root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header */
+.editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: 58px;
+    padding: 0 28px;
+    background: rgba(8, 12, 26, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-glow);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.editor-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 5%;
+    right: 5%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+    opacity: 0.5;
+}
+
+.editor-header-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
+}
+
+.editor-logo {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    object-fit: contain;
+    background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold-dark));
+    box-shadow: 0 0 14px rgba(201, 168, 76, 0.25);
+    flex-shrink: 0;
+}
+
+.editor-page-title {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 1rem;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 0 14px rgba(201, 168, 76, 0.18);
+}
+
+.editor-save-status {
+    font-size: 0.78rem;
+    color: #5a5a5a;
+    font-style: italic;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+    font-family: 'Cormorant Garamond', serif;
+}
+
+.editor-save-status.dirty {
+    color: #c97a6b;
+}
+
+.editor-save-status.saving {
+    color: var(--gold);
+    animation: pulse 1.2s infinite;
+}
+
+.editor-save-status.saved {
+    color: #6b9a6b;
+}
+
+.editor-save-status.error {
+    color: #c97a6b;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+
+.editor-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.editor-move-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.editor-move-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.62rem;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: var(--gold);
+    line-height: 1;
+}
+
+.editor-move-icon {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.editor-move-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-move-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background: rgba(201, 168, 76, 0.06);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    color: var(--gold);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 0.84rem;
+    letter-spacing: 0.4px;
+    padding: 7px 30px 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    min-width: 150px;
+    max-width: 220px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c9a84c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+}
+
+.editor-move-select:hover,
+.editor-move-select:focus-visible {
+    background: rgba(201, 168, 76, 0.12);
+    border-color: rgba(201, 168, 76, 0.55);
+    box-shadow: 0 0 16px rgba(201, 168, 76, 0.1);
+    outline: none;
+}
+
+.editor-move-select option {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.editor-move-select option:disabled {
+    color: var(--text-secondary);
+    opacity: 0.55;
+    font-style: italic;
+}
+
+.editor-move-confirm {
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(201, 168, 76, 0.45);
+    color: var(--gold);
+    padding: 7px 12px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+.editor-move-confirm:hover:not(:disabled) {
+    background: rgba(201, 168, 76, 0.18);
+    border-color: rgba(201, 168, 76, 0.7);
+    box-shadow: 0 0 16px rgba(201, 168, 76, 0.12);
+    color: var(--gold-light);
+}
+
+.editor-move-confirm:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.editor-move-confirm:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.editor-btn,
+.editor-link {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: transparent;
+    border: 1px solid transparent;
+    text-decoration: none;
+    padding: 7px 14px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    position: relative;
+    overflow: hidden;
+}
+
+.editor-btn::before,
+.editor-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(201, 168, 76, 0.12), transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.editor-btn:hover,
+.editor-link:hover {
+    color: var(--gold-light);
+    border-color: var(--border-glow-strong);
+}
+
+.editor-btn:hover::before,
+.editor-link:hover::before {
+    opacity: 1;
+}
+
+.editor-btn.primary {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.35);
+    background: rgba(201, 168, 76, 0.06);
+    box-shadow: 0 0 14px rgba(201, 168, 76, 0.06);
+}
+
+.editor-btn.primary:hover {
+    background: rgba(201, 168, 76, 0.12);
+    box-shadow: 0 0 20px rgba(201, 168, 76, 0.14);
+    border-color: rgba(201, 168, 76, 0.55);
+}
+
+.editor-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.editor-header-sep {
+    color: rgba(201, 168, 76, 0.25);
+    font-size: 0.8rem;
+    user-select: none;
+}
+
+/* Main content */
+.editor-content {
+    flex: 1;
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 42px 24px 100px;
+}
+
+.editor-card {
+    background: var(--bg-editor);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border-glow);
+    border-radius: var(--radius);
+    box-shadow:
+        0 12px 50px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    padding: 48px 56px;
+    min-height: calc(100vh - 220px);
+    position: relative;
+}
+
+.editor-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.3), transparent);
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.editor-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 1.1rem;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.editor-spinner {
+    width: 42px;
+    height: 42px;
+    border: 2px solid rgba(201, 168, 76, 0.1);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* BlockNote / Mantine overrides */
+.bn-container {
+    --bn-colors-editor-background: transparent;
+    --bn-colors-editor-text: var(--text-primary);
+    --bn-colors-menu-background: var(--bg-card);
+    --bn-colors-tooltip-background: var(--bg-card);
+    --bn-colors-side-menu: var(--text-secondary);
+    --bn-colors-side-menu-hover: var(--gold);
+    --bn-colors-hovered-text: var(--gold-light);
+    --bn-color-predicate: var(--gold);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.bn-editor {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    padding: 0 !important;
+}
+
+.bn-editor > div:first-child {
+    padding-left: 0 !important;
+}
+
+.bn-editor h1,
+.bn-editor h2,
+.bn-editor h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-top: 28px;
+}
+
+.bn-editor h1 {
+    font-size: 1.85rem;
+    border-bottom: 1px solid var(--border-glow);
+    padding-bottom: 10px;
+}
+
+.bn-editor h2 {
+    font-size: 1.45rem;
+}
+
+.bn-editor h3 {
+    font-size: 1.15rem;
+}
+
+.bn-editor p {
+    margin: 10px 0;
+    font-size: 1.12rem;
+    line-height: 1.75;
+}
+
+.bn-editor a {
+    color: var(--gold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.bn-editor a:hover {
+    color: var(--gold-light);
+}
+
+.bn-editor blockquote {
+    border-left: 3px solid var(--gold);
+    background: rgba(201, 168, 76, 0.04);
+    font-style: italic;
+    color: #b8b4a8;
+    padding: 12px 24px;
+    margin: 18px 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.bn-editor code {
+    font-family: 'Fira Code', monospace;
+    background: rgba(255, 255, 255, 0.06);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.92em;
+    color: var(--gold-light);
+}
+
+.bn-editor pre {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 18px 24px;
+    border-radius: 8px;
+    margin: 18px 0;
+    border: 1px solid var(--border-glow);
+    overflow-x: auto;
+}
+
+.bn-editor pre code {
+    background: none;
+    padding: 0;
+    color: var(--text-primary);
+}
+
+.bn-editor ul,
+.bn-editor ol {
+    margin: 10px 0;
+    padding-left: 28px;
+}
+
+.bn-editor li {
+    margin: 6px 0;
+}
+
+.bn-editor hr {
+    border: none;
+    border-top: 1px solid var(--border-glow);
+    margin: 32px 0;
+}
+
+.bn-editor img {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border-glow);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    margin: 16px 0;
+}
+
+/* Toolbars & menus */
+.bn-toolbar,
+.bn-slash-menu,
+.bn-side-menu,
+.bn-formatting-toolbar {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-glow-strong) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+.bn-menu-item {
+    color: var(--text-primary) !important;
+    font-family: 'Cormorant Garamond', serif !important;
+}
+
+.bn-menu-item:hover {
+    background: rgba(201, 168, 76, 0.1) !important;
+    color: var(--gold-light) !important;
+}
+
+.bn-menu-item[data-selected='true'] {
+    background: rgba(201, 168, 76, 0.15) !important;
+    color: var(--gold) !important;
+}
+
+.bn-side-menu button {
+    color: var(--text-secondary) !important;
+}
+
+.bn-side-menu button:hover {
+    color: var(--gold) !important;
+    background: rgba(201, 168, 76, 0.08) !important;
+}
+
+/* Placeholder */
+.bn-editor [data-placeholder]::before {
+    color: rgba(168, 152, 122, 0.35) !important;
+    font-style: italic;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.25);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 76, 0.45);
+    background-clip: content-box;
+}
+
+/* Fix floating UI wrappers so they are never clipped to a fixed size.
+   The attribute is added by Floating UI to the toolbar / popover containers. */
+[data-floating-ui-focusable] {
+    width: max-content !important;
+    height: max-content !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow: visible !important;
+}
+
+div[data-floating-ui-focusable] > div.bn-toolbar.bn-formatting-toolbar,
+div[data-floating-ui-focusable] > div.bn-toolbar,
+#root .bn-formatting-toolbar {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    min-height: fit-content !important;
+    height: auto !important;
+}
+
+/* Toolbar: never shrink to a tiny fixed strip; allow wrapping so all
+   formatting controls remain reachable without hidden scrolling. */
+.bn-mantine .bn-toolbar,
+.bn-mantine .bn-toolbar.bn-formatting-toolbar {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    min-height: fit-content !important;
+    height: auto !important;
+    align-items: center;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 168, 76, 0.35) transparent;
+}
+
+/* Dropdowns and suggestion menus must stay usable: grow when possible,
+   scroll gracefully when the viewport is small, with visible scrollbars. */
+.bn-mantine .mantine-Menu-dropdown,
+.bn-mantine .bn-suggestion-menu,
+.bn-mantine .bn-grid-suggestion-menu,
+.bn-mantine .bn-select {
+    max-height: min(70vh, 520px) !important;
+    overflow-y: auto !important;
+    min-width: 160px;
+}
+
+/* Form popovers (edit link, etc.) should size to their content and never be
+   a tiny fixed box. Make inputs responsive so they don't overflow narrow viewports. */
+.bn-mantine .bn-form-popover {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 8px !important;
+    min-width: 160px !important;
+    max-width: calc(100vw - 24px) !important;
+    width: max-content !important;
+    height: auto !important;
+    max-height: min(80vh, 520px) !important;
+    overflow-y: auto !important;
+}
+
+.bn-form-popover .mantine-TextInput-root,
+.bn-form-popover .mantine-FileInput-root {
+    width: 100% !important;
+    min-width: 220px;
+    max-width: 340px;
+}
+
+/* Responsive */
+@media (max-width: 760px) {
+    .editor-header {
+        padding: 0 16px;
+    }
+
+    .editor-page-title {
+        font-size: 0.85rem;
+        max-width: 140px;
+    }
+
+    .editor-btn,
+    .editor-link {
+        padding: 6px 10px;
+        font-size: 0.65rem;
+    }
+
+    .editor-content {
+        padding: 24px 14px 60px;
+    }
+
+    .editor-card {
+        padding: 28px 24px;
+    }
+
+    .editor-header-right {
+        gap: 6px;
+    }
+
+    .editor-header-sep {
+        display: none;
+    }
+
+    .editor-move-label span:not(.editor-move-icon) {
+        display: none;
+    }
+
+    .editor-move-select {
+        min-width: 110px;
+        max-width: 150px;
+        padding-right: 26px;
+    }
+
+    .editor-move-confirm {
+        padding: 6px 8px;
+        font-size: 0.6rem;
+    }
+
+    .bn-mantine .bn-toolbar,
+    .bn-mantine .bn-formatting-toolbar {
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        max-width: calc(100vw - 28px) !important;
+    }
+}

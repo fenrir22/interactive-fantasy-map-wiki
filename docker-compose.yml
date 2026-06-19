@@ -1,0 +1,14 @@
+services:
+  aetherion:
+    build: .
+    ports:
+      - "3210:3000"
+    environment:
+      - ADMIN_USER=admin
+      - ADMIN_PASS=Salame22
+      - SESSION_SECRET=aetherion-secret-change-me
+      - APP_LANG=it
+      - DATA_PATH=/app/data
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
