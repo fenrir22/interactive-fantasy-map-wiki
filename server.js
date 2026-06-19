@@ -1728,13 +1728,20 @@ app.get('/', (req, res) => res.redirect('/map/'));
 const CODE_MAP_DIR = path.join(__dirname, 'map');
 [WIKI_DIR, MAP_DIR, IMG_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
 if (DATA_PATH !== __dirname) {
-    ['index.html', 'editor.html', 'settings.html'].forEach(f => {
-        const t = path.join(MAP_DIR, f);
-        if (!fs.existsSync(t)) {
-            const s = path.join(CODE_MAP_DIR, f);
-            if (fs.existsSync(s)) fs.copyFileSync(s, t);
+    function copyMissing(src, dst) {
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const e of entries) {
+            const s = path.join(src, e.name);
+            const t = path.join(dst, e.name);
+            if (e.isDirectory()) {
+                if (!fs.existsSync(t)) fs.mkdirSync(t, { recursive: true });
+                copyMissing(s, t);
+            } else if (!fs.existsSync(t)) {
+                fs.copyFileSync(s, t);
+            }
         }
-    });
+    }
+    copyMissing(CODE_MAP_DIR, MAP_DIR);
 }
 
 app.listen(PORT, () => {
