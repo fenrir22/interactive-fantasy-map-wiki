@@ -14,10 +14,6 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 |:---:|:---:|
 | ![Map Editor](map/images/EditorArticoli.png) | ![Wiki Editor](map/images/editormapp.png) |
 
-## Live Demo
-
-**[👉 interactive-fantasy-map-wiki.hf.space](https://fenrir2232-interactive-fantasy-map-wiki.hf.space)**
-
 **Default credentials:** `admin` / `admin`
 
 ## Features
