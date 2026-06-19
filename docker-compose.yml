@@ -1,6 +1,6 @@
 services:
   aetherion:
-    build: .
+    image: ghcr.io/fenrir22/interactive-fantasy-map-wiki:latest
     ports:
       - "3210:3000"
     environment:
