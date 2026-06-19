@@ -43,6 +43,25 @@ docker compose up -d
 
 This pulls the image from **ghcr.io** and creates a `./data/` folder with all wiki pages, uploaded images, map markers, and branding files.
 
+The default `docker-compose.yml`:
+
+```yaml
+services:
+  aetherion:
+    image: ghcr.io/fenrir22/interactive-fantasy-map-wiki:latest
+    ports:
+      - "3210:3000"
+    environment:
+      - ADMIN_USER=admin
+      - ADMIN_PASS=Salame22
+      - SESSION_SECRET=aetherion-secret-change-me
+      - APP_LANG=it
+      - DATA_PATH=/app/data
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
 Open in your browser:
 
 | Page | URL |
