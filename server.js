@@ -1745,6 +1745,10 @@ if (DATA_PATH !== __dirname) {
     }
     copyMissing(CODE_MAP_DIR, MAP_DIR);
     copyMissing(CODE_WIKI_DIR, WIKI_DIR, ['images', 'versions']);
+    const CODE_BRANDING = path.join(__dirname, 'branding.json');
+    if (!fs.existsSync(BRANDING_FILE) && fs.existsSync(CODE_BRANDING)) {
+        fs.copyFileSync(CODE_BRANDING, BRANDING_FILE);
+    }
 }
 
 app.listen(PORT, () => {
