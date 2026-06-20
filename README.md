@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
 
 A complete fantasy world wiki + interactive map with a built-in marker editor, running in a single Docker container.
+[Open Live Demo](https://demo.0000048.xyz/)
 
 ## Screenshots
 
