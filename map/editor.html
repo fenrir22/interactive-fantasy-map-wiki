@@ -731,6 +731,19 @@
     <script>
         /* ---- branding loader ---- */
         let brandingData = null;
+
+        const appRoot = document.querySelector('[x-data]');
+        const loader = document.getElementById('loader');
+
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -3, maxZoom: 8, zoomSnap: 0.25,
+            attributionControl: false,
+            zoomAnimation: false,
+            fadeAnimation: false,
+            markerZoomAnimation: false
+        });
+
         fetch('/api/branding?' + Date.now())
             .then(function(r) { return r.json(); })
             .then(function(data) {
@@ -752,46 +765,45 @@
                     var navBrand = document.querySelector('.editor-nav a[href="/wiki/"]');
                     if (navBrand) navBrand.textContent = data.worldName + ' {{nav_brand_suffix}}';
                 }
+
+                var imageWidth = data.mapWidth || 7648;
+                var imageHeight = data.mapHeight || 3808;
+                var mapImageFile = data.mapImage || 'mappa.svg';
+                var bounds = [[0, 0], [imageHeight, imageWidth]];
+
+                var img = new Image();
+                img.onload = function() {
+                    L.imageOverlay(mapImageFile, bounds).addTo(map);
+                    map.fitBounds(bounds);
+                    map.zoomControl.setPosition('topright');
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (appRoot && appRoot.__x) {
+                            appRoot.__x.$data.loaderHidden = true;
+                        } else {
+                            loader.classList.add('hidden');
+                        }
+                    }, 500);
+                };
+                img.src = mapImageFile;
             })
-            .catch(function() {});
-
-        const appRoot = document.querySelector('[x-data]');
-        const loader = document.getElementById('loader');
-
-        const map = L.map('map', {
-            crs: L.CRS.Simple,
-            minZoom: -3, maxZoom: 8, zoomSnap: 0.25,
-            attributionControl: false,
-            zoomAnimation: false,
-            fadeAnimation: false,
-            markerZoomAnimation: false
-        });
-
-        var imageWidth = 7648;
-        var imageHeight = 3808;
-        var mapImageFile = 'mappa.svg';
-        if (brandingData) {
-            if (brandingData.mapWidth) imageWidth = brandingData.mapWidth;
-            if (brandingData.mapHeight) imageHeight = brandingData.mapHeight;
-            if (brandingData.mapImage) mapImageFile = brandingData.mapImage;
-        }
-        const bounds = [[0, 0], [imageHeight, imageWidth]];
-
-        const img = new Image();
-        img.onload = function() {
-            L.imageOverlay(mapImageFile, bounds).addTo(map);
-            map.fitBounds(bounds);
-            map.zoomControl.setPosition('topright');
-            setTimeout(() => {
-                map.invalidateSize();
-                if (appRoot && appRoot.__x) {
-                    appRoot.__x.$data.loaderHidden = true;
-                } else {
-                    loader.classList.add('hidden');
-                }
-            }, 500);
-        };
-        img.src = mapImageFile;
+            .catch(function() {
+                var img = new Image();
+                img.onload = function() {
+                    L.imageOverlay('mappa.svg', [[0, 0], [3808, 7648]]).addTo(map);
+                    map.fitBounds([[0, 0], [3808, 7648]]);
+                    map.zoomControl.setPosition('topright');
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (appRoot && appRoot.__x) {
+                            appRoot.__x.$data.loaderHidden = true;
+                        } else {
+                            loader.classList.add('hidden');
+                        }
+                    }, 500);
+                };
+                img.src = 'mappa.svg';
+            });
 
         const compassEl = document.querySelector('.compass');
         function updateCompass() {

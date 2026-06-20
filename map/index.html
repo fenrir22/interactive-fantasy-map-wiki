@@ -786,31 +786,6 @@
     <script>
         /* ---- branding loader ---- */
         let brandingData = null;
-        fetch('/api/branding?' + Date.now())
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                brandingData = data;
-                var root = document.documentElement;
-                var c = data.colors;
-                if (c.gold) root.style.setProperty('--gold', c.gold);
-                if (c.goldLight) root.style.setProperty('--gold-light', c.goldLight);
-                if (c.goldDark) root.style.setProperty('--gold-dark', c.goldDark);
-                if (c.bgDeep) root.style.setProperty('--bg-deep', c.bgDeep);
-                if (c.textPrimary) root.style.setProperty('--text-primary', c.textPrimary);
-                if (c.textSecondary) root.style.setProperty('--text-secondary', c.textSecondary);
-                if (c.borderGlow) root.style.setProperty('--border-glow', c.borderGlow);
-                if (c.radius) root.style.setProperty('--radius', c.radius);
-                if (data.worldName) {
-                    document.title = data.worldName + '{{map_title_suffix}}';
-                    var titleEls = document.querySelectorAll('.loader-title, .map-title');
-                    titleEls.forEach(function(el) {
-                        if (el.classList.contains('loader-title')) el.textContent = data.worldName;
-                    });
-                    var navBrand = document.querySelector('.nav-bar a[href="/wiki/"]');
-                    if (navBrand) navBrand.textContent = data.worldName + '{{nav_brand_suffix}}';
-                }
-            })
-            .catch(function() {});
 
         const appRoot = document.querySelector('[x-data]');
         const loader = document.getElementById('loader');
@@ -840,23 +815,52 @@
             markerZoomAnimation: false
         });
 
-        var imageWidth = 7648;
-        var imageHeight = 3808;
-        var mapImageFile = 'mappa.svg';
-        if (brandingData) {
-            if (brandingData.mapWidth) imageWidth = brandingData.mapWidth;
-            if (brandingData.mapHeight) imageHeight = brandingData.mapHeight;
-            if (brandingData.mapImage) mapImageFile = brandingData.mapImage;
-        }
-        const bounds = [[0, 0], [imageHeight, imageWidth]];
+        fetch('/api/branding?' + Date.now())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                brandingData = data;
+                var root = document.documentElement;
+                var c = data.colors;
+                if (c.gold) root.style.setProperty('--gold', c.gold);
+                if (c.goldLight) root.style.setProperty('--gold-light', c.goldLight);
+                if (c.goldDark) root.style.setProperty('--gold-dark', c.goldDark);
+                if (c.bgDeep) root.style.setProperty('--bg-deep', c.bgDeep);
+                if (c.textPrimary) root.style.setProperty('--text-primary', c.textPrimary);
+                if (c.textSecondary) root.style.setProperty('--text-secondary', c.textSecondary);
+                if (c.borderGlow) root.style.setProperty('--border-glow', c.borderGlow);
+                if (c.radius) root.style.setProperty('--radius', c.radius);
+                if (data.worldName) {
+                    document.title = data.worldName + '{{map_title_suffix}}';
+                    var titleEls = document.querySelectorAll('.loader-title, .map-title');
+                    titleEls.forEach(function(el) {
+                        if (el.classList.contains('loader-title')) el.textContent = data.worldName;
+                    });
+                    var navBrand = document.querySelector('.nav-bar a[href="/wiki/"]');
+                    if (navBrand) navBrand.textContent = data.worldName + '{{nav_brand_suffix}}';
+                }
 
-        const img = new Image();
-        img.onload = function() {
-            L.imageOverlay(mapImageFile, bounds).addTo(map);
-            map.fitBounds(bounds);
-            setTimeout(() => { map.invalidateSize(); checkReady(); }, 500);
-        };
-        img.src = mapImageFile;
+                var imageWidth = data.mapWidth || 7648;
+                var imageHeight = data.mapHeight || 3808;
+                var mapImageFile = data.mapImage || 'mappa.svg';
+                var bounds = [[0, 0], [imageHeight, imageWidth]];
+
+                var img = new Image();
+                img.onload = function() {
+                    L.imageOverlay(mapImageFile, bounds).addTo(map);
+                    map.fitBounds(bounds);
+                    setTimeout(() => { map.invalidateSize(); checkReady(); }, 500);
+                };
+                img.src = mapImageFile;
+            })
+            .catch(function() {
+                var img = new Image();
+                img.onload = function() {
+                    L.imageOverlay('mappa.svg', [[0, 0], [3808, 7648]]).addTo(map);
+                    map.fitBounds([[0, 0], [3808, 7648]]);
+                    setTimeout(() => { map.invalidateSize(); checkReady(); }, 500);
+                };
+                img.src = 'mappa.svg';
+            });
 
         const compassEl = document.querySelector('.compass');
         function updateCompass() {
