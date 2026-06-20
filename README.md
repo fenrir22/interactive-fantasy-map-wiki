@@ -16,7 +16,7 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 | ![Map Editor](map/images/EditorArticoli.png) | ![Wiki Editor](map/images/editormapp.png) |
 
 **Default credentials:** `admin` / `admin`
-[Open Live Demo](https://demo.0000048.xyz/)
+[Open Live Demo](https://interactive-fantasy-map-wiki-production.up.railway.app/)
 
 ## Features
 
