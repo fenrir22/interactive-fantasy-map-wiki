@@ -720,6 +720,15 @@
 
         function updateThemePreview() {
             var c = getColors();
+            var root = document.documentElement;
+            root.style.setProperty('--gold', c.gold || '#c9a84c');
+            root.style.setProperty('--gold-light', c.goldLight || '#e8c44a');
+            root.style.setProperty('--gold-dark', c.goldDark || '#8a6e2b');
+            root.style.setProperty('--bg-deep', c.bgDeep || '#080c1a');
+            root.style.setProperty('--text-primary', c.textPrimary || '#f0e6d3');
+            root.style.setProperty('--text-secondary', c.textSecondary || '#a8987a');
+            root.style.setProperty('--border-glow', c.borderGlow || 'rgba(201,168,76,0.15)');
+            root.style.setProperty('--radius', c.radius || '12px');
             var preview = document.getElementById('themePreview');
             preview.style.setProperty('--gold', c.gold || '#c9a84c');
             preview.style.setProperty('--gold-light', c.goldLight || '#e8c44a');
