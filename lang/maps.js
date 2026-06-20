@@ -9,9 +9,10 @@ function applyMap(content, map) {
 }
 
 const LANG = process.env.APP_LANG || 'eng';
+const LANG_DIR = path.join(process.env.DATA_PATH || __dirname, 'lang');
 
 function loadMapPairs(page) {
-  const langFile = path.join(__dirname, `${LANG}.json`);
+  const langFile = path.join(LANG_DIR, `${LANG}.json`);
   if (!fs.existsSync(langFile)) return [];
   const data = JSON.parse(fs.readFileSync(langFile, 'utf-8'));
   const common = data.map_common || {};

@@ -4,13 +4,69 @@ const marked = require('marked');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
-const { t, translations, lang, langCode, clientKeys } = require('./lang/loader');
-// maps.js kept for potential future use
 
 const DATA_PATH = process.env.DATA_PATH || __dirname;
+const EXE_DIR = path.dirname(process.execPath);
+const CODE_DIR = (function() {
+    if (fs.existsSync(path.join(__dirname, 'lang', 'eng.json'))) return __dirname;
+    if (fs.existsSync(path.join(EXE_DIR, 'lang', 'eng.json'))) return EXE_DIR;
+    return DATA_PATH;
+})();
+const CONFIG_FILE = path.join(DATA_PATH, 'config.json');
 const IMG_DIR = path.join(DATA_PATH, 'wiki', 'images');
 const MAP_DIR = path.join(DATA_PATH, 'map');
 const BRANDING_FILE = path.join(DATA_PATH, 'branding.json');
+
+function loadConfig() {
+    try {
+        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    } catch {
+        return null;
+    }
+}
+
+function saveConfig(cfg) {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
+function isSetupDone() {
+    const cfg = loadConfig();
+    return cfg && cfg.adminUser && cfg.adminPass;
+}
+
+// Seed directories and files BEFORE requiring lang modules
+const WIKI_DIR = path.join(DATA_PATH, 'wiki');
+const WIKI_ORDER_FILE = path.join(WIKI_DIR, '.order.json');
+
+function copyMissing(src, dst, skip) {
+    if (!fs.existsSync(src)) return;
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+    for (const e of entries) {
+        if (skip && skip.includes(e.name)) continue;
+        const s = path.join(src, e.name);
+        const d2 = path.join(dst, e.name);
+        if (e.isDirectory()) {
+            if (!fs.existsSync(d2)) fs.mkdirSync(d2, { recursive: true });
+            copyMissing(s, d2, skip);
+        } else if (!fs.existsSync(d2)) {
+            fs.copyFileSync(s, d2);
+        }
+    }
+}
+
+[WIKI_DIR, MAP_DIR, IMG_DIR, path.join(DATA_PATH, 'lang')].forEach(d => fs.mkdirSync(d, { recursive: true }));
+copyMissing(path.join(CODE_DIR, 'map'), MAP_DIR);
+copyMissing(path.join(CODE_DIR, 'wiki'), WIKI_DIR, ['images', 'versions']);
+copyMissing(path.join(CODE_DIR, 'lang'), path.join(DATA_PATH, 'lang'));
+copyMissing(path.join(CODE_DIR, 'public'), path.join(DATA_PATH, 'public'));
+if (!fs.existsSync(BRANDING_FILE)) {
+    const codeBranding = path.join(CODE_DIR, 'branding.json');
+    if (fs.existsSync(codeBranding)) fs.copyFileSync(codeBranding, BRANDING_FILE);
+}
+
+// Now safe to require lang modules (files are seeded)
+const { t, translations, lang, langCode, clientKeys } = require('./lang/loader');
+// maps.js kept for potential future use
 
 const imgStorage = multer.diskStorage({
     destination: IMG_DIR,
@@ -107,10 +163,15 @@ function loadBranding() {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || 'admin';
-const WIKI_DIR = path.join(DATA_PATH, 'wiki');
-const WIKI_ORDER_FILE = path.join(WIKI_DIR, '.order.json');
+
+function getAdminUser() {
+    const cfg = loadConfig();
+    return (cfg && cfg.adminUser) || process.env.ADMIN_USER || 'admin';
+}
+function getAdminPass() {
+    const cfg = loadConfig();
+    return (cfg && cfg.adminPass) || process.env.ADMIN_PASS || 'admin';
+}
 
 function loadOrder() {
     try {
@@ -1564,7 +1625,7 @@ app.get('/login/', (req, res) => {
 });
 
 app.post('/login/', (req, res) => {
-    if (req.body.username === ADMIN_USER && req.body.password === ADMIN_PASS) {
+    if (req.body.username === getAdminUser() && req.body.password === getAdminPass()) {
         req.session.admin = true;
         return res.redirect(req.body.redirect || '/wiki/');
     }
@@ -1723,37 +1784,79 @@ app.get(/^\/wiki\/(.+)$/, (req, res) => {
     `, admin));
 });
 
-app.get('/', (req, res) => res.redirect('/map/'));
+app.get('/', (req, res) => {
+    if (!isSetupDone()) return res.redirect('/setup');
+    res.redirect('/map/');
+});
 
-const CODE_MAP_DIR = path.join(__dirname, 'map');
-const CODE_WIKI_DIR = path.join(__dirname, 'wiki');
-[WIKI_DIR, MAP_DIR, IMG_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
-if (DATA_PATH !== __dirname) {
-    function copyMissing(src, dst, skip) {
-        const entries = fs.readdirSync(src, { withFileTypes: true });
-        for (const e of entries) {
-            if (skip && skip.includes(e.name)) continue;
-            const s = path.join(src, e.name);
-            const t = path.join(dst, e.name);
-            if (e.isDirectory()) {
-                if (!fs.existsSync(t)) fs.mkdirSync(t, { recursive: true });
-                copyMissing(s, t, skip);
-            } else if (!fs.existsSync(t)) {
-                fs.copyFileSync(s, t);
-            }
-        }
+app.get('/setup', (req, res) => {
+    if (isSetupDone()) return res.redirect('/map/');
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aetherion - Initial Setup</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cormorant Garamond',serif;background:radial-gradient(ellipse at 20% 0%,rgba(201,168,76,.04) 0%,transparent 45%),radial-gradient(ellipse at 80% 100%,rgba(201,168,76,.03) 0%,transparent 40%),#080c1a;color:#f0e6d3;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.setup-card{max-width:440px;width:90%;background:rgba(12,16,32,.85);border:1px solid rgba(201,168,76,.2);border-radius:16px;padding:48px 40px;box-shadow:0 20px 80px rgba(0,0,0,.6);text-align:center}
+h1{font-family:'Cinzel',serif;font-size:1.6rem;color:#c9a84c;letter-spacing:3px;margin-bottom:8px}
+.subtitle{color:#a8987a;font-style:italic;margin-bottom:32px;font-size:0.95rem}
+.form-group{margin-bottom:20px;text-align:left}
+.form-group label{display:block;font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:1.5px;color:#a8987a;margin-bottom:6px;text-transform:uppercase}
+.form-group input{width:100%;padding:12px 16px;background:rgba(0,0,0,.3);color:#f0e6d3;border:1px solid rgba(201,168,76,.15);border-radius:8px;font-family:'Cormorant Garamond',serif;font-size:1rem;transition:border-color .2s}
+.form-group input:focus{outline:none;border-color:#c9a84c}
+.btn{font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:1px;padding:12px 36px;border-radius:8px;cursor:pointer;border:none;font-weight:700;background:linear-gradient(135deg,#b8860b,#c9a84c);color:#0a0e1a;margin-top:12px;transition:all .2s}
+.btn:hover{background:linear-gradient(135deg,#c9a84c,#e8c44a);box-shadow:0 0 20px rgba(201,168,76,.2)}
+.error{color:#c97a6b;font-style:italic;font-size:.85rem;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="setup-card">
+<h1>AETHERION</h1>
+<p class="subtitle">Initial Setup</p>
+<form method="POST" action="/setup">
+<div class="form-group">
+<label for="worldName">World Name</label>
+<input type="text" id="worldName" name="worldName" placeholder="My Fantasy World" required>
+</div>
+<div class="form-group">
+<label for="adminUser">Admin Username</label>
+<input type="text" id="adminUser" name="adminUser" placeholder="admin" required autocomplete="username">
+</div>
+<div class="form-group">
+<label for="adminPass">Admin Password</label>
+<input type="password" id="adminPass" name="adminPass" placeholder="password" required autocomplete="new-password">
+</div>
+<button type="submit" class="btn">Start</button>
+</form>
+</div>
+</body>
+</html>`);
+});
+
+app.post('/setup', express.urlencoded({ extended: false }), (req, res) => {
+    if (isSetupDone()) return res.redirect('/map/');
+    const { worldName, adminUser, adminPass } = req.body;
+    if (!worldName || !adminUser || !adminPass) {
+        return res.redirect('/setup?error=1');
     }
-    copyMissing(CODE_MAP_DIR, MAP_DIR);
-    copyMissing(CODE_WIKI_DIR, WIKI_DIR, ['images', 'versions']);
-    const CODE_BRANDING = path.join(__dirname, 'branding.json');
-    if (!fs.existsSync(BRANDING_FILE) && fs.existsSync(CODE_BRANDING)) {
-        fs.copyFileSync(CODE_BRANDING, BRANDING_FILE);
-    }
-}
+    saveConfig({ adminUser, adminPass });
+    const branding = loadBranding();
+    branding.worldName = worldName;
+    fs.writeFileSync(BRANDING_FILE, JSON.stringify(branding, null, 2), 'utf-8');
+    res.redirect('/login/');
+});
 
 app.listen(PORT, () => {
     console.log(t('server_started', { port: PORT }));
-    console.log(t('server_map') + ' http://localhost:' + PORT + '/map/');
-    console.log(t('server_wiki') + ' http://localhost:' + PORT + '/wiki/');
-    console.log(`Admin: ${ADMIN_USER} / ${ADMIN_PASS}`);
+    if (!isSetupDone()) {
+        console.log('First run — open http://localhost:' + PORT + '/setup to configure');
+    } else {
+        console.log(t('server_map') + ' http://localhost:' + PORT + '/map/');
+        console.log(t('server_wiki') + ' http://localhost:' + PORT + '/wiki/');
+        console.log(`Admin: ${getAdminUser()}`);
+    }
 });

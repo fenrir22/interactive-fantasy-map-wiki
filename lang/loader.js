@@ -7,8 +7,9 @@ const LANG_DIR = path.join(process.env.DATA_PATH || __dirname, 'lang');
 function loadTranslations() {
   const langFile = path.join(LANG_DIR, `${LANG}.json`);
   if (!fs.existsSync(langFile)) {
-    console.warn(`Language file not found: ${langFile}, falling back to eng`);
-    return JSON.parse(fs.readFileSync(path.join(LANG_DIR, 'eng.json'), 'utf-8'));
+    const fallback = path.join(LANG_DIR, 'eng.json');
+    if (!fs.existsSync(fallback)) return {};
+    return JSON.parse(fs.readFileSync(fallback, 'utf-8'));
   }
   return JSON.parse(fs.readFileSync(langFile, 'utf-8'));
 }
