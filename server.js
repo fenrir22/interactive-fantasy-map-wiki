@@ -7,9 +7,11 @@ const multer = require('multer');
 
 const DATA_PATH = process.env.DATA_PATH || path.dirname(process.execPath);
 const EXE_DIR = path.dirname(process.execPath);
+const RES_DIR = process.resourcesPath || EXE_DIR;
 const CODE_DIR = (function() {
     if (fs.existsSync(path.join(__dirname, 'lang', 'eng.json'))) return __dirname;
     if (fs.existsSync(path.join(EXE_DIR, 'lang', 'eng.json'))) return EXE_DIR;
+    if (fs.existsSync(path.join(RES_DIR, 'lang', 'eng.json'))) return RES_DIR;
     return DATA_PATH;
 })();
 const CONFIG_FILE = path.join(DATA_PATH, 'config.json');
@@ -1662,7 +1664,7 @@ app.get('/logout/', (req, res) => {
 app.get(/^\/wiki\/(.+)\/edit$/, requireAdmin, (req, res) => {
     const page = sanitizeWikiPath(req.params[0]);
     if (!page) return res.redirect('/wiki/');
-    const editorHtml = fs.readFileSync(path.join(__dirname, 'public', 'editor-assets', 'index.html'), 'utf-8');
+    const editorHtml = fs.readFileSync(path.join(DATA_PATH, 'public', 'editor-assets', 'index.html'), 'utf-8');
     res.send(renderHtml(editorHtml));
 });
 
