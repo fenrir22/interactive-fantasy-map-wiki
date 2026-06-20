@@ -32,6 +32,8 @@ function App() {
     const [moveTarget, setMoveTarget] = useState('_placeholder');
     const [moveAnnounce, setMoveAnnounce] = useState('');
     const loadStarted = useRef(false);
+    const dirtyRef = useRef(false);
+    const onChangeTimer = useRef(null);
 
     const pageName = useMemo(() => {
         const m = window.location.pathname.match(/\/wiki\/(.+)\/edit$/);
@@ -49,8 +51,13 @@ function App() {
     const editor = useCreateBlockNote({
         uploadFile: handleUpload,
         onChange: () => {
-            setIsDirty(true);
-            setSaveStatus('dirty');
+            dirtyRef.current = true;
+            if (onChangeTimer.current) return;
+            onChangeTimer.current = setTimeout(() => {
+                onChangeTimer.current = null;
+                setIsDirty(true);
+                setSaveStatus('dirty');
+            }, 300);
         },
     });
 
@@ -231,7 +238,7 @@ function App() {
 
     useEffect(() => {
         function onBeforeUnload(e) {
-            if (isDirty) {
+            if (dirtyRef.current || isDirty) {
                 e.preventDefault();
                 e.returnValue = '';
             }
