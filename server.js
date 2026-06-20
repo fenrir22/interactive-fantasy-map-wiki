@@ -65,7 +65,7 @@ if (!fs.existsSync(BRANDING_FILE)) {
 }
 
 // Now safe to require lang modules (files are seeded)
-const { t, translations, lang, langCode, clientKeys } = require('./lang/loader');
+const { t, translations, lang, langCode, clientKeys, switchLang, getLang } = require('./lang/loader');
 // maps.js kept for potential future use
 
 const imgStorage = multer.diskStorage({
@@ -927,6 +927,29 @@ app.post('/api/wiki/order', requireAdmin, (req, res) => {
     order[parent] = items;
     saveOrder(order);
     res.json({ ok: true });
+});
+
+// --- Language API ---
+const AVAILABLE_LANGS = [
+  { code: 'eng', name: 'English', flag: '🇬🇧' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' }
+];
+
+app.get('/api/language', (req, res) => {
+    const cfg = loadConfig() || {};
+    res.json({ language: cfg.language || 'eng', available: AVAILABLE_LANGS });
+});
+
+app.post('/api/language', requireAdmin, (req, res) => {
+    const langCode = req.body.language;
+    if (!langCode || !AVAILABLE_LANGS.find(l => l.code === langCode)) {
+        return res.status(400).json({ error: 'Invalid language code' });
+    }
+    const cfg = loadConfig() || {};
+    cfg.language = langCode;
+    saveConfig(cfg);
+    switchLang(langCode);
+    res.json({ ok: true, language: langCode });
 });
 
 app.get('/api/branding', (req, res) => {

@@ -284,5 +284,10 @@
   "editor_create_page": "Create new page...",
   "editor_no_results": "No results",
 
-  "footer_credits": "Made with love ❤️ by fenrir"
+  "footer_credits": "Made with love ❤️ by fenrir",
+
+  "settings_section_language": "Language",
+  "settings_language_description": "Choose the interface language for the wiki and map.",
+  "settings_language_saving": "Changing language...",
+  "settings_language_error": "Error changing language"
 }

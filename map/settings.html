@@ -670,6 +670,13 @@
             </div>
         </div>
 
+        <div class="section">
+            <div class="section-title">{{settings_section_language}}</div>
+            <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:16px">{{settings_language_description}}</p>
+            <div class="lang-options" id="langOptions" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+            <div class="save-status" id="langStatus"></div>
+        </div>
+
         <div class="btn-row">
             <button class="btn btn-gold" id="saveBtn">{{settings_btn_save}}</button>
             <button class="btn btn-outline" id="resetBtn">{{settings_btn_reset}}</button>
@@ -1100,6 +1107,38 @@
                 ogPrev.style.display = '';
                 document.getElementById('ogUploadText').textContent = data.ogImage;
             }
+        });
+
+        // Language selector
+        fetch('/api/language').then(function(r) { return r.json(); }).then(function(data) {
+            var container = document.getElementById('langOptions');
+            container.innerHTML = '';
+            data.available.forEach(function(item) {
+                var btn = document.createElement('button');
+                btn.className = 'btn' + (item.code === data.language ? ' btn-gold' : ' btn-outline');
+                btn.textContent = item.flag + ' ' + item.name;
+                btn.style.cssText = 'font-size:0.9rem;padding:8px 20px;';
+                btn.addEventListener('click', function() {
+                    if (item.code === data.language) return;
+                    var langStatus = document.getElementById('langStatus');
+                    langStatus.textContent = '{{settings_language_saving}}';
+                    langStatus.className = 'save-status saving';
+                    fetch('/api/language', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language: item.code })
+                    }).then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json();
+                    }).then(function() {
+                        window.location.reload();
+                    }).catch(function() {
+                        langStatus.textContent = '{{settings_language_error}}';
+                        langStatus.className = 'save-status error';
+                    });
+                });
+                container.appendChild(btn);
+            });
         });
     </script>
     <div class="footer-credits">{{footer_credits}}</div>
