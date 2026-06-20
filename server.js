@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-const DATA_PATH = process.env.DATA_PATH || __dirname;
+const DATA_PATH = process.env.DATA_PATH || path.dirname(process.execPath);
 const EXE_DIR = path.dirname(process.execPath);
 const CODE_DIR = (function() {
     if (fs.existsSync(path.join(__dirname, 'lang', 'eng.json'))) return __dirname;
