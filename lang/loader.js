@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const LANG = process.env.APP_LANG || 'eng';
-const LANG_DIR = path.join(__dirname);
+const LANG_DIR = path.join(process.env.DATA_PATH || __dirname, 'lang');
 
 function loadTranslations() {
   const langFile = path.join(LANG_DIR, `${LANG}.json`);

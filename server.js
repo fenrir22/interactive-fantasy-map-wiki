@@ -258,7 +258,7 @@ function cleanupEmptyFolders(dir) {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(DATA_PATH, 'public')));
 app.use(session({
     secret: process.env.SESSION_SECRET || 'aetherion-secret-change-me',
     resave: false,
