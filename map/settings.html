@@ -332,6 +332,34 @@
             font-style: italic;
             color: var(--text-secondary);
         }
+        .map-progress {
+            margin-top: 16px;
+        }
+        .map-progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(201, 168, 76, 0.12);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .map-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-light));
+            border-radius: 3px;
+            animation: mapProgress 1.2s ease-in-out infinite;
+        }
+        .map-progress-text {
+            margin-top: 8px;
+            font-style: italic;
+            font-size: 0.85rem;
+            color: var(--gold);
+        }
+        @keyframes mapProgress {
+            0% { width: 0%; margin-left: 0; }
+            50% { width: 60%; margin-left: 20%; }
+            100% { width: 0%; margin-left: 100%; }
+        }
         .btn {
             font-family: Cinzel, serif;
             font-size: 0.8rem;
@@ -543,6 +571,10 @@
                 <div class="map-upload-area" id="mapUploadArea">
                     <div class="map-upload-icon" id="mapUploadIcon">&#127758;</div>
                     <div class="map-upload-text" id="mapUploadText">{{settings_map_upload_text}}</div>
+                    <div class="map-progress" id="mapProgress" style="display:none">
+                        <div class="map-progress-bar"><div class="map-progress-fill" id="mapProgressFill"></div></div>
+                        <div class="map-progress-text" id="mapProgressText">{{settings_map_uploading}}</div>
+                    </div>
                     <img class="map-preview" id="mapPreview" alt="{{settings_map_preview_alt}}">
                 </div>
                 <input type="file" id="mapFileInput" accept=".svg,.png,.jpg,.jpeg,.webp" style="display:none">
@@ -919,7 +951,16 @@
             if (!file) return;
             var fd = new FormData();
             fd.append('mapImage', file);
-            setStatus('{{settings_status_uploading_map}}', 'saving');
+            var progress = document.getElementById('mapProgress');
+            var progressFill = document.getElementById('mapProgressFill');
+            var progressText = document.getElementById('mapProgressText');
+            var uploadIcon = document.getElementById('mapUploadIcon');
+            var uploadText = document.getElementById('mapUploadText');
+            progress.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.textContent = '{{settings_map_uploading}}';
+            uploadIcon.style.display = 'none';
+            uploadText.style.display = 'none';
             fetch('/api/branding/map', {
                 method: 'POST',
                 body: fd
@@ -927,14 +968,21 @@
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             }).then(function(resp) {
+                progressFill.style.width = '100%';
+                progressText.textContent = '{{settings_map_upload_done}}';
+                setTimeout(function() { progress.style.display = 'none'; }, 600);
                 var preview = document.getElementById('mapPreview');
                 preview.src = '/map/' + resp.filename + '?' + Date.now();
                 preview.classList.add('visible');
                 document.getElementById('mapUploadArea').classList.add('has-image');
-                document.getElementById('mapUploadIcon').style.display = 'none';
-                document.getElementById('mapUploadText').textContent = '{{settings_map_change_text}}';
+                uploadIcon.style.display = 'none';
+                uploadText.textContent = '{{settings_map_change_text}}';
+                uploadText.style.display = '';
                 setStatus('{{settings_status_map_uploaded}}', 'success');
             }).catch(function() {
+                progress.style.display = 'none';
+                uploadIcon.style.display = '';
+                uploadText.style.display = '';
                 setStatus('{{settings_status_map_upload_error}}', 'error');
             });
             this.value = '';

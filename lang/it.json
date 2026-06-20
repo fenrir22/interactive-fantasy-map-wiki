@@ -202,6 +202,8 @@
   "settings_status_uploading_map": "Caricamento mappa...",
   "settings_status_map_uploaded": "Mappa caricata con successo!",
   "settings_status_map_upload_error": "Errore durante il caricamento della mappa. Usa file SVG, PNG o JPG (max 50MB).",
+  "settings_map_uploading": "Caricamento...",
+  "settings_map_upload_done": "Caricamento completato!",
   "settings_status_uploading_og": "Caricamento immagine...",
   "settings_status_og_uploaded": "Immagine social caricata!",
   "settings_status_og_upload_error": "Errore caricamento. Usa SVG, PNG, JPG (max 5MB).",

@@ -202,6 +202,8 @@
   "settings_status_uploading_map": "Uploading map...",
   "settings_status_map_uploaded": "Map uploaded successfully!",
   "settings_status_map_upload_error": "Error uploading map. Use SVG, PNG or JPG (max 50MB).",
+  "settings_map_uploading": "Uploading...",
+  "settings_map_upload_done": "Upload complete!",
   "settings_status_uploading_og": "Uploading image...",
   "settings_status_og_uploaded": "Social image uploaded!",
   "settings_status_og_upload_error": "Upload error. Use SVG, PNG, JPG (max 5MB).",
