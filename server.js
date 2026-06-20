@@ -5,15 +5,30 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
-let Tunnel = null;
-try {
-    const cloudflaredMod = require('cloudflared');
-    Tunnel = cloudflaredMod.Tunnel;
-    if (Tunnel && process.env.CLOUDFLARED_BIN) {
-        cloudflaredMod.use(process.env.CLOUDFLARED_BIN);
-        console.log('[Tunnel] Using binary:', process.env.CLOUDFLARED_BIN);
+const { spawn } = require('child_process');
+const { EventEmitter } = require('events');
+const CLOUDFLARED_BIN = process.env.CLOUDFLARED_BIN || 'cloudflared';
+console.log('[Tunnel] Binary:', CLOUDFLARED_BIN, 'exists:', fs.existsSync(CLOUDFLARED_BIN));
+
+class CloudflaredTunnel extends EventEmitter {
+    constructor(url) {
+        super();
+        const args = ['tunnel', '--url', url];
+        this._process = spawn(CLOUDFLARED_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        this._process.on('error', (err) => this.emit('error', err));
+        this._process.on('exit', (code, signal) => this.emit('exit', code, signal));
+        this._process.stdout.on('data', (data) => this._processOutput(data.toString()));
+        this._process.stderr.on('data', (data) => this._processOutput(data.toString()));
     }
-} catch(e) { console.warn('[Tunnel] cloudflared not available:', e.message); }
+    _processOutput(output) {
+        const match = output.match(/https:\/\/([a-z0-9-]+)\.trycloudflare\.com/);
+        if (match) this.emit('url', match[0]);
+    }
+    stop() {
+        try { this._process.kill('SIGINT'); } catch(e) {}
+    }
+}
+let Tunnel = CLOUDFLARED_BIN ? CloudflaredTunnel : null;
 
 process.on('uncaughtException', (err) => { console.error('[FATAL] Uncaught exception:', err.message); });
 process.on('unhandledRejection', (reason) => { console.error('[FATAL] Unhandled rejection:', reason); });
@@ -1038,7 +1053,7 @@ app.post('/api/tunnel/start', requireAdmin, async (req, res) => {
         return res.json({ active: true, ok: true, url: tunnelUrl, already: true });
     }
     try {
-        activeTunnel = Tunnel.quick('http://localhost:' + (process.env.PORT || 3000));
+        activeTunnel = new Tunnel('http://localhost:' + (process.env.PORT || 3000));
         activeTunnel.on('error', (err) => {
             console.error('[Tunnel] Process error:', err.message);
             activeTunnel = null;
