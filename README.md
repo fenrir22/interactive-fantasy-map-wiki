@@ -18,6 +18,36 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 **Default credentials:** `admin` / `admin`
 [Open Live Demo](https://interactive-fantasy-map-wiki-production.up.railway.app/)
 
+
+### Quick Start Desktop App (Recommended)
+
+Download the appropriate file from **Releases**.
+
+**Linux**  
+Download the AppImage, then:
+
+```bash
+chmod +x Aetherion.AppImage
+./Aetherion.AppImage
+```
+**Windows**
+
+Download Aetherion.exe and double-click it to run.
+A splash screen appears while the server starts, then the app window opens automatically.
+
+No Node.js or Docker required everything is bundled inside the app
+First launch redirects to setup to configure world name and admin credentials
+Data is saved to:
+```
+Linux: ~/.config/aetherion/data/
+Windows: %APPDATA%\aetherion\data\
+```
+
+Language switcher in Settings (English / Italian)
+Works offline
+
+
+
 ## Features
 
 - **Interactive map** — Leaflet with CRS.Simple, zoom and pan, compass, place search
