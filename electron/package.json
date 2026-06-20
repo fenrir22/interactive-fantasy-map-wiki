@@ -33,6 +33,10 @@
       {
         "from": "splash.html",
         "to": "splash.html"
+      },
+      {
+        "from": "../public",
+        "to": "public"
       }
     ],
     "linux": {
