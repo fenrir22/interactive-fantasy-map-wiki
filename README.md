@@ -30,6 +30,17 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 - **Dynamic OG tags** — each wiki page gets custom open-graph metadata for rich link previews
 - **Translation system** — all UI strings in JSON files; add a new language by creating a single `lang/xx.json` file
 
+## Accessibility
+
+The wiki interface is built with semantic HTML and follows WAI-ARIA Authoring Practices for screen reader and assistive technology compatibility:
+
+- **Skip navigation** — a `skip-link` allows keyboard and screen reader users to bypass the navbar and jump directly to the main content.
+- **ARIA tree widget** — the wiki page tree uses `role="tree"` / `role="treeitem"` with `aria-level`, `aria-expanded`, and `aria-selected` attributes, matching the [WAI-ARIA Tree View pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/) for hierarchical navigation.
+- **Live regions** — search results and tree operations announce state changes via `aria-live="polite"` regions.
+- **Focus management** — `tabindex` roving within the tree ensures a single Tab stop, with arrow-key navigation handled in JavaScript.
+- **Semantic labels** — navigation landmarks (`aria-label`), form inputs (`<label>` with `sr-only` class), and interactive controls carry descriptive accessible names in all supported languages.
+- **Keyboard-operable actions** — all tree toggles, rename buttons, and create/delete actions are `<button>` elements natively accessible via keyboard.
+
 ## Documentation
 
 Full guide on translating the UI, customizing the theme, adding markers, creating wiki pages, and more: [`DOCS.md`](DOCS.md)
