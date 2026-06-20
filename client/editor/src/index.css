@@ -540,6 +540,11 @@ body {
     background: rgba(201, 168, 76, 0.08) !important;
 }
 
+/* Hide the drag handle (⠿) which crashes BlockNote on click */
+.bn-drag-handle {
+    display: none !important;
+}
+
 /* Placeholder */
 .bn-editor [data-placeholder]::before {
     color: rgba(168, 152, 122, 0.35) !important;
