@@ -1,9 +1,8 @@
-# Interactive Fantasy Map with Integrated Wiki
+# Aetherion — Interactive Fantasy Map Wiki
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
 
-A complete fantasy world wiki + interactive map with a built-in marker editor, running in a single Docker container.
-
+A complete fantasy world wiki + interactive map with a built-in marker editor, available as a Docker container, standalone Node.js server, or **desktop AppImage for Linux**.
 
 ## Screenshots
 
@@ -18,6 +17,38 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 **Default credentials:** `admin` / `admin`
 [Open Live Demo](https://interactive-fantasy-map-wiki-production.up.railway.app/)
 
+## Quick Start — Desktop App (Recommended)
+
+Download the **AppImage** from [Releases](https://github.com/fenrir22/interactive-fantasy-map-wiki/releases/tag/v1.0.0), then:
+
+```bash
+chmod +x Aetherion.AppImage
+./Aetherion.AppImage
+```
+
+A splash screen appears while the server starts, then the app window opens automatically.
+
+- **No Node.js or Docker required** — everything is bundled inside the AppImage
+- **First launch** redirects to `/setup` to configure world name and admin credentials
+- **Data** is saved to `~/.config/aetherion/data/`
+- **Language switcher** in Settings (English / Italian)
+- Works offline
+
+## Quick Start — Docker
+
+```bash
+docker compose up -d
+```
+
+Open http://localhost:3000
+
+## Quick Start — Node.js
+
+```bash
+npm install
+node server.js
+```
+
 ## Features
 
 - **Interactive map** — Leaflet with CRS.Simple, zoom and pan, compass, place search
@@ -27,6 +58,7 @@ A complete fantasy world wiki + interactive map with a built-in marker editor, r
 - **Map editor** — create, edit, delete markers; import/merge/export JSON; save to server
 - **Admin panel** — protected login to edit the wiki and the map
 - **Settings panel** — customize world name, map image & dimensions, favicon, social sharing (og:title, og:description, og:image), colors with live preview
+- **Language switcher** — change UI language from English to Italian directly from Settings
 - **Dynamic OG tags** — each wiki page gets custom open-graph metadata for rich link previews
 - **Translation system** — all UI strings in JSON files; add a new language by creating a single `lang/xx.json` file
 

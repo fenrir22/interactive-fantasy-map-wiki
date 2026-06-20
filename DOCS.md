@@ -2,8 +2,10 @@
 
 ## Table of Contents
 
+- [Desktop App (AppImage)](#desktop-app-appimage)
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
+- [Language switcher](#language-switcher)
 - [Data persistence](#data-persistence)
 - [Wiki system](#wiki-system)
 - [Interactive map](#interactive-map)
@@ -14,7 +16,69 @@
 - [Translations](#translations)
 - [API reference](#api-reference)
 - [Project structure](#project-structure)
+- [Building from source](#building-from-source)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Desktop App (AppImage)
+
+Aetherion is available as a **standalone Linux desktop app** (AppImage). No Docker, Node.js, or terminal required.
+
+### Download
+
+Get the latest release from [GitHub Releases](https://github.com/fenrir22/interactive-fantasy-map-wiki/releases/tag/v1.0.0).
+
+### Run
+
+```bash
+chmod +x Aetherion.AppImage
+./Aetherion.AppImage
+```
+
+### What happens on first launch
+
+1. A **splash screen** appears with a loading animation
+2. The server starts automatically in the background
+3. The app window opens and redirects to `/setup`
+4. Configure your **world name** and **admin credentials**
+5. You're ready to use the map, wiki, and settings
+
+### How it works
+
+- The AppImage bundles a **Node.js server** (Electron + SEA) with all static files embedded
+- On first launch, it extracts default files (map, wiki, lang, branding) to `~/.config/aetherion/data/`
+- The server runs on `localhost:3000` inside the app window
+- A **language switcher** in Settings lets you change between English and Italian
+
+### Data location
+
+All data is saved to:
+
+```
+~/.config/aetherion/data/
+├── wiki/          # Wiki pages, images, versions
+├── map/           # Map image, markers, settings
+├── lang/          # Translation files
+├── config.json    # Admin credentials and language preference
+└── branding.json  # World name, colors, favicon
+```
+
+### Rebuilding the AppImage
+
+From the `dev2` branch:
+
+```bash
+git checkout dev2
+cd electron
+npm install
+npx esbuild ../server.js --bundle --platform=node --outfile=server-bundle.js --external:node:*
+# Generate seed-data.js (includes all static files)
+node -e "/* see build script */"
+npx electron-builder --linux AppImage
+```
+
+Output: `dist-electron/Aetherion-1.0.0.AppImage`
 
 ---
 
@@ -70,6 +134,42 @@ To change the host port, edit the `ports` section:
 ports:
   - "8080:3000"   # host:container
 ```
+
+---
+
+## Language switcher
+
+The UI language can be changed from the **Settings** page (`/settings`).
+
+### Available languages
+
+| Code | Language |
+|------|----------|
+| `eng` | English |
+| `it` | Italiano |
+
+### How to switch
+
+1. Go to `/settings` (admin login required)
+2. Scroll to the **Language** section at the bottom
+3. Click **English** or **Italiano**
+4. The page reloads with the new language applied
+
+The language preference is saved in `config.json` and persists across restarts.
+
+### API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/language` | Get current language and available options |
+| POST | `/api/language` | Set language (body: `{"language": "eng"}` or `{"language": "it"}`) |
+
+### Adding a new language
+
+1. Copy `lang/eng.json` to `lang/fr.json`
+2. Translate all string values
+3. Add the language to the `AVAILABLE_LANGS` array in `server.js`
+4. Rebuild
 
 ---
 
@@ -377,6 +477,13 @@ Server-rendered pages use `t('key')` to look up the current language. Static HTM
 | GET | `/api/client-keys` | Get translation keys for client-side |
 | GET | `/api/blocknote-locale` | Get BlockNote editor locale |
 
+### Language
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/language` | Get current language and available options |
+| POST | `/api/language` | Set language (body: `{"language": "eng"}`) |
+
 ### Markers
 
 | Method | Endpoint | Description |
@@ -415,15 +522,71 @@ Server-rendered pages use `t('key')` to look up the current language. Static HTM
 │   ├── loader.js            # Translation loader
 │   └── maps.js              # Template renderer utilities
 ├── client/editor/           # BlockNote editor (React + Vite)
+├── public/editor-assets/    # Built wiki editor (Vite output)
+├── electron/                # Electron desktop app (dev2 branch)
+│   ├── main.js              # Electron main process
+│   ├── splash.html          # Splash screen
+│   ├── package.json         # Electron + electron-builder config
+│   └── icon.png             # App icon
 ├── server.js                # Express server
 ├── Dockerfile               # Multi-stage Node 20 Alpine build
 ├── docker-compose.yml       # Container orchestration
+├── build-sea.sh             # SEA binary build script (dev2)
+├── sea-entry.js             # SEA entry point (dev2)
 └── package.json
 ```
 
 ---
 
+## Building from source
+
+### Docker image
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+### Standalone Node.js binary (SEA)
+
+Requires Node.js v22+ and the official Node binary for SEA:
+
+```bash
+git checkout dev2
+bash build-sea.sh
+```
+
+Output: `dist/aetherion` (single executable, ~120MB)
+
+### Electron AppImage
+
+Requires Node.js and npm:
+
+```bash
+git checkout dev2
+cd electron
+npm install
+npx esbuild ../server.js --bundle --platform=node --outfile=server-bundle.js --external:node:*
+npx electron-builder --linux AppImage
+```
+
+Output: `dist-electron/Aetherion-1.0.0.AppImage` (~110MB)
+
+---
+
+---
+
 ## Troubleshooting
+
+### First-run setup wizard
+
+On first launch (Docker, Node.js, or AppImage), the app redirects to `/setup` where you configure:
+
+- **World Name** — displayed in the title and navbar
+- **Admin Username** — for login
+- **Admin Password** — for login
+
+These are saved to `config.json` in the data directory.
 
 ### Blank page or "Aetherion — Interactive Map" only
 
