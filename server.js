@@ -4,6 +4,7 @@ const marked = require('marked');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const yaml = require('js-yaml');
 const { t, translations, lang, langCode, clientKeys } = require('./lang/loader');
 // maps.js kept for potential future use
 
@@ -254,6 +255,96 @@ function cleanupEmptyFolders(dir) {
             break;
         }
     }
+}
+
+const BLOCKNOTE_EDITOR = fs.existsSync(path.join(__dirname, 'public', 'editor-assets', 'index.html'));
+
+function parseFrontmatter(md) {
+    const m = md.match(/^---\n([\s\S]*?)\n---\n*/);
+    if (!m) return { attrs: {}, content: md };
+    try {
+        const attrs = yaml.load(m[1]) || {};
+        return { attrs, content: md.slice(m[0].length) };
+    } catch {
+        return { attrs: {}, content: md };
+    }
+}
+
+function renderWikilinks(html, currentPage) {
+    return html.replace(/\[\[([^\]]+)\]\]/g, (m, raw) => {
+        const parts = raw.split('|');
+        const target = parts[0].trim().replace(/\s+/g, '_');
+        const label = parts[1] ? parts[1].trim() : parts[0].trim();
+        const href = '/wiki/' + encodeURIComponent(target);
+        const cls = (currentPage && target === currentPage) ? 'wikilink self' : 'wikilink';
+        return `<a href="${href}" class="${cls}">${label}</a>`;
+    });
+}
+
+function generateToc(body) {
+    const headings = [];
+    const re = /<h([1-6])\b[^>]*id="([^"]*)"[^>]*>([\s\S]*?)<\/h\1>/gi;
+    let m;
+    while ((m = re.exec(body)) !== null) {
+        const level = parseInt(m[1]);
+        const id = m[2];
+        const text = m[3].replace(/<[^>]+>/g, '');
+        headings.push({ level, id, text });
+    }
+    if (headings.length < 2) return '';
+    let html = '<nav class="wiki-toc"><h3>' + t('toc_title') + '</h3><ol>';
+    for (const h of headings) {
+        html += `<li style="margin-left:${(h.level - 1) * 16}px"><a href="#${h.id}">${h.text}</a></li>`;
+    }
+    html += '</ol></nav>';
+    return html;
+}
+
+function infoboxHtml(attrs) {
+    const keys = Object.keys(attrs).filter(k => k !== 'title' && k !== 'subtitle' && k !== 'tags');
+    if (!keys.length && !attrs.title && !attrs.subtitle) return '';
+    const tags = Array.isArray(attrs.tags) ? attrs.tags.map(t => `<span class="infobox-tag">${t}</span>`).join('') : '';
+    let html = '<aside class="infobox">';
+    if (attrs.title) html += `<h2 class="infobox-title">${attrs.title}</h2>`;
+    if (attrs.subtitle) html += `<p class="infobox-subtitle">${attrs.subtitle}</p>`;
+    if (tags) html += `<div class="infobox-tags">${tags}</div>`;
+    for (const k of keys) {
+        const v = Array.isArray(attrs[k]) ? attrs[k].join(', ') : String(attrs[k]);
+        html += `<div class="infobox-row"><span class="infobox-key">${k}</span><span class="infobox-val">${v}</span></div>`;
+    }
+    html += '</aside>';
+    return html;
+}
+
+let backlinksCache = {};
+let backlinksDirty = true;
+
+function buildBacklinks() {
+    if (!backlinksDirty) return;
+    backlinksCache = {};
+    const pages = [];
+    listWikiPages(WIKI_DIR, '', pages);
+    for (const p of pages) {
+        const fp = safeWikiFilePath(p);
+        if (!fp || !fs.existsSync(fp)) continue;
+        const content = fs.readFileSync(fp, 'utf-8');
+        const refs = content.match(/\[\[([^\]]+)\]\]/g) || [];
+        for (const ref of refs) {
+            const target = ref.slice(2, -2).split('|')[0].trim().replace(/\s+/g, '_');
+            if (!backlinksCache[target]) backlinksCache[target] = [];
+            if (!backlinksCache[target].includes(p)) backlinksCache[target].push(p);
+        }
+    }
+    backlinksDirty = false;
+}
+
+function markBacklinksDirty() { backlinksDirty = true; }
+
+function renderMarkdown(md, currentPage) {
+    const { attrs, content } = parseFrontmatter(md);
+    const raw = marked.parse(content, { gfm: true });
+    const body = renderWikilinks(raw, currentPage);
+    return { attrs, body, content };
 }
 
 app.use(express.urlencoded({ extended: true }));
@@ -719,6 +810,31 @@ function wikiLayout(title, content, admin) {
             position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
             overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
         }
+        .wiki-layout { display: flex; gap: 28px; align-items: flex-start; }
+        .wiki-main { flex: 1; min-width: 0; }
+        .wiki-sidebar { width: 260px; flex-shrink: 0; }
+        .infobox { background: rgba(0,0,0,0.2); border: 1px solid var(--border-glow); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
+        .infobox-title { font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--gold); margin-bottom: 4px; }
+        .infobox-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px; font-style: italic; }
+        .infobox-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+        .infobox-tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; background: rgba(201,168,76,0.1); color: var(--gold); font-family: 'Cinzel', serif; letter-spacing: 0.5px; }
+        .infobox-row { display: flex; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.85rem; }
+        .infobox-key { width: 90px; flex-shrink: 0; color: var(--text-secondary); font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.5px; text-transform: uppercase; }
+        .infobox-val { flex: 1; color: var(--text-primary); }
+        .wiki-toc { margin-bottom: 24px; }
+        .wiki-toc h3 { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-secondary); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+        .wiki-toc ol { list-style: none; padding: 0; margin: 0; }
+        .wiki-toc li { margin: 3px 0; font-size: 0.85rem; }
+        .wiki-toc a { color: var(--text-secondary); text-decoration: none; transition: color .2s; }
+        .wiki-toc a:hover { color: var(--gold); }
+        .wiki-backlinks { margin-top: 20px; }
+        .wiki-backlinks h3 { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--text-secondary); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+        .wiki-backlinks ul { list-style: none; padding: 0; margin: 0; }
+        .wiki-backlinks li { margin: 4px 0; font-size: 0.85rem; }
+        .wiki-backlinks a { color: var(--text-secondary); text-decoration: none; transition: color .2s; }
+        .wiki-backlinks a:hover { color: var(--gold); }
+        .wikilink.self { color: var(--text-primary); pointer-events: none; text-decoration: none; }
+        @media (max-width: 860px) { .wiki-layout { flex-direction: column; } .wiki-sidebar { width: 100%; } }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
@@ -1656,6 +1772,7 @@ app.post(/^\/wiki\/(.+)$/, requireAdmin, (req, res) => {
     }
 
     fs.writeFileSync(filePath, req.body.content || '', 'utf-8');
+    markBacklinksDirty();
 
     if (req.xhr || req.headers['x-requested-with'] === 'XMLHttpRequest') {
         return res.json({ ok: true, page: page });
@@ -1694,33 +1811,194 @@ app.get(/^\/wiki\/(.+)\/versions$/, requireAdmin, (req, res) => {
         ${list}`, true));
 });
 
-app.get(/^\/wiki\/(.+)$/, (req, res) => {
+app.get(/^\/wiki\/(.+)\/mdedit$/, requireAdmin, (req, res) => {
     const page = sanitizeWikiPath(req.params[0]);
     if (!page) return res.redirect('/wiki/');
     const filePath = safeWikiFilePath(page);
-    if (!filePath) return res.status(400).send('Invalid path');
-    const admin = isAdmin(req);
+    if (!filePath) return res.redirect('/wiki/');
+    const content = (filePath && fs.existsSync(filePath)) ? fs.readFileSync(filePath, 'utf-8') : '';
     const display = pageDisplayName(page);
+    const branding = loadBranding();
+    const c = branding.colors;
 
-    if (!fs.existsSync(filePath)) {
-        const content = admin
-            ? `<div class="error-404"><h2>404</h2><p>${t('page_not_found_msg', { page: display })}</p><p><a href="/wiki/${page}/edit">${t('page_not_found_create')}</a></p></div>`
-            : `<div class="error-404"><h2>404</h2><p>${t('page_not_found_msg', { page: display })}</p></div>`;
-        return res.status(404).send(wikiLayout(t('page_not_found'), content, admin));
-    }
+    const html = `<!DOCTYPE html>
+<html lang="${langCode}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${t('edit_page_title', { page: display })}</title>
+    <link rel="icon" type="image/svg+xml" href="/map/favicon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --gold: ${c.gold}; --gold-light: ${c.goldLight}; --gold-dark: ${c.goldDark};
+            --bg-deep: ${c.bgDeep}; --text-primary: ${c.textPrimary}; --text-secondary: ${c.textSecondary};
+            --border-glow: ${c.borderGlow}; --radius: ${c.radius};
+        }
+        body {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            background: var(--bg-deep); color: var(--text-primary);
+            height: 100vh; overflow: hidden;
+        }
+        .editor-nav {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 50px; padding: 0 20px;
+            background: rgba(8,12,26,0.9); border-bottom: 1px solid var(--border-glow);
+        }
+        .editor-nav a, .editor-nav button {
+            font-family: 'Cinzel', serif; color: var(--gold); text-decoration: none;
+            font-size: 0.8rem; letter-spacing: 1px; background: none; border: none; cursor: pointer;
+            padding: 6px 14px; border-radius: 4px; transition: all .2s;
+        }
+        .editor-nav a:hover, .editor-nav button:hover { background: rgba(201,168,76,0.1); }
+        .editor-nav .nav-left, .editor-nav .nav-right { display: flex; align-items: center; gap: 12px; }
+        #save-status { font-family: 'Cinzel', serif; font-size: 0.7rem; color: var(--text-secondary); letter-spacing: 0.5px; }
+        #save-status.saving { color: var(--gold); }
+        #save-status.saved { color: #6a9; }
+        #save-status.error { color: #c97a7a; }
+        .editor-wrap { display: flex; height: calc(100vh - 50px); }
+        .editor-pane {
+            flex: 1; display: flex; flex-direction: column;
+            border-right: 1px solid var(--border-glow);
+        }
+        .editor-pane textarea {
+            flex: 1; width: 100%; padding: 20px; resize: none; border: none; outline: none;
+            background: rgba(0,0,0,0.2); color: var(--text-primary);
+            font-family: 'Fira Code', monospace; font-size: 0.9rem; line-height: 1.6;
+        }
+        .preview-pane {
+            flex: 1; overflow-y: auto; padding: 20px;
+            background: rgba(0,0,0,0.1);
+        }
+        .preview-pane .wiki-content h1, .preview-pane .wiki-content h2, .preview-pane .wiki-content h3 {
+            font-family: 'Cinzel', serif; color: var(--gold); margin: 24px 0 10px;
+        }
+        .preview-pane .wiki-content h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border-glow); padding-bottom: 6px; }
+        .preview-pane .wiki-content h2 { font-size: 1.25rem; }
+        .preview-pane .wiki-content p { margin: 10px 0; font-size: 1.05rem; }
+        .preview-pane .wiki-content a { color: var(--gold); }
+        .preview-pane .wiki-content code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+        .preview-pane .wiki-content pre { background: rgba(0,0,0,0.3); padding: 14px 18px; border-radius: 6px; overflow-x: auto; margin: 12px 0; }
+        .preview-pane .wiki-content img { max-width: 100%; border-radius: 6px; margin: 12px 0; }
+        .preview-pane .wiki-content blockquote { border-left: 3px solid var(--gold); padding: 8px 16px; margin: 12px 0; background: rgba(201,168,76,0.04); }
+        .preview-pane .wiki-content table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .preview-pane .wiki-content th, .preview-pane .wiki-content td { padding: 8px 12px; border: 1px solid var(--border-glow); }
+        .preview-pane .wiki-content th { background: rgba(201,168,76,0.06); color: var(--gold); font-family: 'Cinzel', serif; }
+        .infobox { margin-bottom: 16px; }
+        .toggle-split {
+            position: fixed; bottom: 16px; right: 16px; z-index: 100;
+            font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 1px;
+            padding: 8px 16px; border: 1px solid var(--border-glow); border-radius: 6px;
+            background: rgba(8,12,26,0.85); color: var(--gold); cursor: pointer;
+            backdrop-filter: blur(8px); transition: all .2s;
+        }
+        .toggle-split:hover { background: rgba(201,168,76,0.1); }
+        @media (max-width: 768px) {
+            .editor-wrap { flex-direction: column; }
+            .editor-pane { border-right: none; border-bottom: 1px solid var(--border-glow); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="editor-nav">
+        <div class="nav-left">
+            <a href="/wiki/${page}">← ${t('page_view_edit')}</a>
+            <span style="color:var(--text-secondary);font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.5px">${display}</span>
+        </div>
+        <div class="nav-right">
+            <span id="save-status">${t('editor_idle')}</span>
+            <button onclick="save()">${t('editor_save')}</button>
+            <a href="/wiki/${page}">${t('preview_back')}</a>
+        </div>
+    </nav>
+    <div class="editor-wrap">
+        <div class="editor-pane">
+            <textarea id="editor" oninput="onChange()">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</textarea>
+        </div>
+        <div class="preview-pane" id="preview"></div>
+    </div>
+    <button class="toggle-split" onclick="toggleLayout()">${t('editor_toggle_view')}</button>
+    <script>
+        const page = ${JSON.stringify(page)};
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('save-status');
+        let saveTimer = null;
+        let isSaving = false;
+        let layout = 'split';
 
-    const md = fs.readFileSync(filePath, 'utf-8');
-    const body = marked.parse(md);
-    const stats = fs.statSync(filePath);
-    const date = stats.mtime.toLocaleDateString(translations.locale, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    const editLink = admin ? `<p style="margin-top:40px;display:flex;gap:12px;flex-wrap:wrap"><a href="/wiki/${page}/edit" class="wiki-edit-btn">${t('page_view_edit')}</a><a href="/wiki/${page}/versions" class="wiki-back-btn">${t('page_view_history')}</a><form method="POST" action="/wiki/${page}/delete" style="display:inline" onsubmit="return confirm('${t('page_view_delete_confirm', { page: display })}')"><button type="submit" class="wiki-del-btn">${t('page_view_delete')}</button></form></p>` : '';
+        function render() {
+            const text = editor.value;
+            fetch('/wiki/' + encodeURIComponent(page) + '/preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: text })
+            })
+            .then(r => r.text())
+            .then(html => {
+                const m = html.match(/<div class="wiki-content">([\\s\\S]*)<\\/div>\\s*<\\/main>/);
+                preview.innerHTML = m ? m[1] : html;
+            });
+        }
 
-    res.send(wikiLayout(display, `
-        <h1 class="wiki-title">${display}</h1>
-        <div class="wiki-meta">${t('page_view_last_modified', { date })}</div>
-        <div class="wiki-content">${body}</div>
-        ${editLink}
-    `, admin));
+        let renderTimer = null;
+        function onChange() {
+            clearTimeout(renderTimer);
+            renderTimer = setTimeout(render, 300);
+            clearTimeout(saveTimer);
+            status.textContent = '${t('editor_dirty')}';
+            status.className = '';
+            saveTimer = setTimeout(save, 2000);
+        }
+
+        function save() {
+            if (isSaving) return;
+            isSaving = true;
+            status.textContent = '${t('editor_saving')}';
+            status.className = 'saving';
+            fetch('/wiki/' + encodeURIComponent(page), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'content=' + encodeURIComponent(editor.value)
+            })
+            .then(r => {
+                if (!r.ok) throw new Error();
+                status.textContent = '${t('editor_saved')}';
+                status.className = 'saved';
+                setTimeout(() => { status.textContent = '${t('editor_idle')}'; status.className = ''; }, 2000);
+            })
+            .catch(() => {
+                status.textContent = '${t('editor_error')}';
+                status.className = 'error';
+            })
+            .finally(() => { isSaving = false; });
+        }
+
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
+        });
+
+        function toggleLayout() {
+            const wrap = document.querySelector('.editor-wrap');
+            if (layout === 'split') {
+                wrap.style.flexDirection = 'column';
+                document.querySelector('.editor-pane').style.flex = '1';
+                document.querySelector('.preview-pane').style.display = 'none';
+                layout = 'editor';
+            } else {
+                wrap.style.flexDirection = 'row';
+                document.querySelector('.editor-pane').style.flex = '1';
+                document.querySelector('.preview-pane').style.display = '';
+                layout = 'split';
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>`;
+    res.send(renderHtml(html));
 });
 
 app.get('/', (req, res) => res.redirect('/map/'));
@@ -1750,6 +2028,65 @@ if (DATA_PATH !== __dirname) {
         fs.copyFileSync(CODE_BRANDING, BRANDING_FILE);
     }
 }
+
+app.get(/^\/wiki\/(.+)$/, (req, res) => {
+    const page = sanitizeWikiPath(req.params[0]);
+    if (!page) return res.redirect('/wiki/');
+    const filePath = safeWikiFilePath(page);
+    if (!filePath) return res.status(400).send('Invalid path');
+    const admin = isAdmin(req);
+    const display = pageDisplayName(page);
+
+    if (!fs.existsSync(filePath)) {
+        const content = admin
+            ? `<div class="error-404"><h2>404</h2><p>${t('page_not_found_msg', { page: display })}</p><p><a href="/wiki/${page}/edit">${t('page_not_found_create')}</a></p></div>`
+            : `<div class="error-404"><h2>404</h2><p>${t('page_not_found_msg', { page: display })}</p></div>`;
+        return res.status(404).send(wikiLayout(t('page_not_found'), content, admin));
+    }
+
+    const md = fs.readFileSync(filePath, 'utf-8');
+    const { attrs, body } = renderMarkdown(md, page);
+    const stats = fs.statSync(filePath);
+    const date = stats.mtime.toLocaleDateString(translations.locale, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const toc = generateToc(body);
+    const info = infoboxHtml(attrs);
+
+    buildBacklinks();
+    const backlinks = (backlinksCache[page] || []).map(p =>
+        `<li><a href="/wiki/${encodeURIComponent(p)}">${pageDisplayName(p)}</a></li>`
+    ).join('');
+
+    const editBtns = admin ? `<p style="margin-top:40px;display:flex;gap:12px;flex-wrap:wrap">
+        <a href="/wiki/${page}/edit" class="wiki-edit-btn">${t('page_view_edit')}</a>
+        <a href="/wiki/${page}/mdedit" class="wiki-back-btn">✎ Markdown</a>
+        <a href="/wiki/${page}/versions" class="wiki-back-btn">${t('page_view_history')}</a>
+        <form method="POST" action="/wiki/${page}/delete" style="display:inline" onsubmit="return confirm('${t('page_view_delete_confirm', { page: display })}')"><button type="submit" class="wiki-del-btn">${t('page_view_delete')}</button></form>
+    </p>` : '';
+
+    const backlinksHtml = backlinks ? `<div class="wiki-backlinks"><h3>${t('backlinks_title')}</h3><ul>${backlinks}</ul></div>` : '';
+
+    res.send(wikiLayout(display, `
+        <div class="wiki-layout">
+            <div class="wiki-main">
+                <h1 class="wiki-title">${display}</h1>
+                <div class="wiki-meta">${t('page_view_last_modified', { date })}</div>
+                ${toc}
+                <div class="wiki-content">${body}</div>
+                ${editBtns}
+            </div>
+            <div class="wiki-sidebar">
+                ${info}
+                ${backlinksHtml}
+            </div>
+        </div>
+    `, admin));
+});
+
+app.get('/api/backlinks/:page', (req, res) => {
+    buildBacklinks();
+    const page = sanitizeWikiPath(req.params.page);
+    res.json(backlinksCache[page] || []);
+});
 
 app.listen(PORT, () => {
     console.log(t('server_started', { port: PORT }));

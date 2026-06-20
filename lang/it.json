@@ -282,5 +282,13 @@
   "editor_create_page": "Crea nuova pagina...",
   "editor_no_results": "Nessun risultato",
 
+  "toc_title": "Indice",
+  "backlinks_title": "Collegamenti",
+  "editor_idle": "In attesa",
+  "editor_dirty": "Modifiche non salvate",
+  "editor_saved": "Salvato!",
+  "editor_toggle_view": "Cambia vista",
+  "edit_page_title": "Modifica — {{page}}",
+
   "footer_credits": "Fatto con amore ❤️ da fenrir"
 }

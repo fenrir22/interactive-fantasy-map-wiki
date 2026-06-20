@@ -282,5 +282,13 @@
   "editor_create_page": "Create new page...",
   "editor_no_results": "No results",
 
+  "toc_title": "Table of Contents",
+  "backlinks_title": "Backlinks",
+  "editor_idle": "Idle",
+  "editor_dirty": "Unsaved changes",
+  "editor_saved": "Saved!",
+  "editor_toggle_view": "Toggle view",
+  "edit_page_title": "Edit — {{page}}",
+
   "footer_credits": "Made with love ❤️ by fenrir"
 }
