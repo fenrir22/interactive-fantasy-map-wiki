@@ -13,9 +13,12 @@
         "multer": "^1.4.5-lts.1"
     },
     "devDependencies": {
-        "@blocknote/core": "^0.25.0",
-        "@blocknote/mantine": "^0.25.0",
-        "@blocknote/react": "^0.25.0",
+        "@blocknote/core": "^0.47.3",
+        "@blocknote/mantine": "^0.47.3",
+        "@blocknote/react": "^0.47.3",
+        "@mantine/core": "^8.3.11",
+        "@mantine/hooks": "^8.3.11",
+        "@mantine/utils": "^6.0.22",
         "@types/react": "^18.3.0",
         "@types/react-dom": "^18.3.0",
         "@vitejs/plugin-react": "^4.3.0",
