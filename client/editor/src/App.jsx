@@ -48,7 +48,6 @@ function App() {
 
     const editor = useCreateBlockNote({
         uploadFile: handleUpload,
-        dictionary: blocknoteDict,
         onChange: () => {
             setIsDirty(true);
             setSaveStatus('dirty');
