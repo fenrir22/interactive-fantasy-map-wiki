@@ -1795,7 +1795,11 @@ app.get('/logout/', (req, res) => {
 app.get(/^\/wiki\/(.+)\/edit$/, requireAdmin, (req, res) => {
     const page = sanitizeWikiPath(req.params[0]);
     if (!page) return res.redirect('/wiki/');
-    const editorHtml = fs.readFileSync(path.join(DATA_PATH, 'public', 'editor-assets', 'index.html'), 'utf-8');
+    const editorPath = path.join(DATA_PATH, 'public', 'editor-assets', 'index.html');
+    if (!fs.existsSync(editorPath)) {
+        return res.status(503).send(renderHtml(`<!DOCTYPE html><html><head><title>Editor</title></head><body style="background:#080c1a;color:#f0e6d3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;"><div><h1>Editor not available</h1><p>The map editor files are not installed. Please rebuild the application.</p><a href="/wiki/${page}" style="color:#c9a84c;">← Back to wiki</a></div></body></html>`));
+    }
+    const editorHtml = fs.readFileSync(editorPath, 'utf-8');
     res.send(renderHtml(editorHtml));
 });
 
