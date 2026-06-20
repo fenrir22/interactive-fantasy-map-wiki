@@ -1,0 +1,48 @@
+{
+  "name": "aetherion",
+  "version": "1.0.0",
+  "description": "Interactive Fantasy Map Wiki",
+  "main": "main.js",
+  "author": "fenrir <fenrir@fenrir.dev>",
+  "license": "MIT",
+  "homepage": "https://github.com/fenrir22/interactive-fantasy-map-wiki",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux AppImage"
+  },
+  "build": {
+    "appId": "com.fenrir.aetherion",
+    "productName": "Aetherion",
+    "asar": true,
+    "directories": {
+      "output": "../dist-electron"
+    },
+    "files": [
+      "main.js",
+      "icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "server-bundle.js",
+        "to": "server-bundle.js"
+      },
+      {
+        "from": "seed-data.js",
+        "to": "seed-data.js"
+      },
+      {
+        "from": "splash.html",
+        "to": "splash.html"
+      }
+    ],
+    "linux": {
+      "target": "AppImage",
+      "category": "Game",
+      "icon": "icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0"
+  }
+}
