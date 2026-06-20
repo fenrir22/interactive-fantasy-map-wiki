@@ -5,6 +5,22 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 
+let Tunnel = null;
+try {
+    const cloudflaredMod = require('cloudflared');
+    Tunnel = cloudflaredMod.Tunnel;
+    if (Tunnel && process.env.CLOUDFLARED_BIN) {
+        cloudflaredMod.use(process.env.CLOUDFLARED_BIN);
+        console.log('[Tunnel] Using binary:', process.env.CLOUDFLARED_BIN);
+    }
+} catch(e) { console.warn('[Tunnel] cloudflared not available:', e.message); }
+
+process.on('uncaughtException', (err) => { console.error('[FATAL] Uncaught exception:', err.message); });
+process.on('unhandledRejection', (reason) => { console.error('[FATAL] Unhandled rejection:', reason); });
+
+let activeTunnel = null;
+let tunnelUrl = null;
+
 const DATA_PATH = process.env.DATA_PATH || path.dirname(process.execPath);
 const EXE_DIR = path.dirname(process.execPath);
 const RES_DIR = process.resourcesPath || EXE_DIR;
@@ -337,12 +353,20 @@ function requireAdmin(req, res, next) {
     res.redirect('/login/?redirect=' + encodeURIComponent(req.originalUrl));
 }
 
-function wikiLayout(title, content, admin) {
+function wikiLayout(title, content, admin, pageSlug) {
     const branding = loadBranding();
     const c = branding.colors;
     const navRight = admin
         ? `<a href="/map/">${t('nav_map')}</a><a href="/wiki/">${t('nav_wiki')}</a><a href="/map/edit">${t('nav_editor')}</a><a href="/settings">${t('nav_settings')}</a><a href="/logout/" style="color:#7a7a7a">${t('nav_logout')}</a>`
         : `<a href="/map/">${t('nav_map')}</a><a href="/wiki/">${t('nav_wiki')}</a><a href="/login/">${t('nav_login')}</a>`;
+    const ogUrl = tunnelUrl
+        ? tunnelUrl + '/wiki/' + (pageSlug || '')
+        : '';
+    const shareBtnHtml = `
+    <button class="share-btn" id="shareBtn" title="${t('share_button')}" onclick="sharePage()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
+    <div class="share-toast" id="shareToast">${t('share_copied')}</div>`;
     const html = `<!DOCTYPE html>
 <html lang="${langCode}">
 <head>
@@ -352,8 +376,8 @@ function wikiLayout(title, content, admin) {
     <link rel="icon" type="${faviconType(branding.favicon || 'favicon.svg')}" href="/map/${branding.favicon || 'favicon.svg'}">
     <meta property="og:title" content="${branding.ogTitle || t('meta_title_wiki', { title: branding.worldName + ' — ' + title })}">
     <meta property="og:description" content="${branding.ogDescription || t('meta_desc_wiki', { title })}">
-    <meta property="og:image" content="${branding.ogImage ? '/map/' + branding.ogImage : '/map/' + branding.favicon}">
-    <meta property="og:url" content="/wiki/">
+    <meta property="og:image" content="${branding.ogImage ? (tunnelUrl || '') + '/map/' + branding.ogImage : (tunnelUrl || '') + '/map/' + (branding.favicon || 'favicon.svg')}">
+    ${ogUrl ? `<meta property="og:url" content="${ogUrl}">` : ''}
     <meta name="twitter:card" content="summary">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -793,7 +817,54 @@ function wikiLayout(title, content, admin) {
             .wiki-title { font-size: 1.6rem; }
             .wiki-nav .nav-links { gap: 14px; }
         }
+        .share-btn {
+            position: fixed; top: 70px; right: 24px; z-index: 200;
+            width: 42px; height: 42px; border-radius: 50%;
+            background: rgba(12, 16, 32, 0.85); border: 1px solid var(--border-glow);
+            color: var(--gold); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease; backdrop-filter: blur(10px);
+        }
+        .share-btn:hover { background: rgba(201, 168, 76, 0.15); border-color: var(--gold); box-shadow: 0 0 16px rgba(201, 168, 76, 0.2); }
+        .share-toast {
+            position: fixed; top: 120px; right: 24px; z-index: 200;
+            background: rgba(12, 16, 32, 0.92); border: 1px solid var(--gold);
+            color: var(--gold); padding: 10px 18px; border-radius: 8px;
+            font-family: 'Cinzel', serif; font-size: 0.8rem; letter-spacing: 1px;
+            opacity: 0; transform: translateY(-8px); pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .share-toast.show { opacity: 1; transform: translateY(0); }
     </style>
+    <script>
+    async function sharePage() {
+        let url = window.location.href;
+        let tunnelActive = false;
+        try {
+            const r = await fetch('/api/tunnel');
+            const data = await r.json();
+            if (data.active && data.url) {
+                url = data.url + window.location.pathname;
+                tunnelActive = true;
+            }
+        } catch(e) {}
+        if (!tunnelActive) {
+            const toast = document.getElementById('shareToast');
+            toast.textContent = ${JSON.stringify(t('share_start_first'))};
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); toast.textContent = ${JSON.stringify(t('share_copied'))}; }, 3000);
+            return;
+        }
+        if (navigator.share) {
+            try { await navigator.share({ title: document.title, url: url }); } catch(e) {}
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(url);
+            const toast = document.getElementById('shareToast');
+            toast.textContent = ${JSON.stringify(t('share_copied'))};
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+    }
+    </script>
 </head>
 <body>
     <a class="skip-link" href="#main-content">${t('a11y_skip_to_content')}</a>
@@ -805,6 +876,7 @@ function wikiLayout(title, content, admin) {
         <div class="nav-links">${navRight}</div>
     </nav>
     <main id="main-content" class="wiki-wrap"><div class="wiki-card">${content}</div></main>
+    ${shareBtnHtml}
     <div class="footer-credits">${t('footer_credits')}</div>
 </body>
 </html>`;
@@ -952,6 +1024,65 @@ app.post('/api/language', requireAdmin, (req, res) => {
     saveConfig(cfg);
     switchLang(langCode);
     res.json({ ok: true, language: langCode });
+});
+
+// --- Tunnel API ---
+app.get('/api/tunnel', (req, res) => {
+    res.json({ active: !!activeTunnel, url: tunnelUrl });
+});
+
+app.post('/api/tunnel/start', requireAdmin, async (req, res) => {
+    console.log('[Tunnel] Start requested, Tunnel available:', !!Tunnel, 'CLOUDFLARED_BIN:', process.env.CLOUDFLARED_BIN);
+    if (!Tunnel) return res.status(500).json({ error: 'cloudflared not available' });
+    if (activeTunnel) {
+        return res.json({ active: true, ok: true, url: tunnelUrl, already: true });
+    }
+    try {
+        activeTunnel = Tunnel.quick('http://localhost:' + (process.env.PORT || 3000));
+        activeTunnel.on('error', (err) => {
+            console.error('[Tunnel] Process error:', err.message);
+            activeTunnel = null;
+            tunnelUrl = null;
+        });
+        tunnelUrl = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                try { activeTunnel.kill(); } catch(e) {}
+                activeTunnel = null;
+                reject(new Error('Tunnel timeout'));
+            }, 30000);
+            activeTunnel.once('url', (url) => {
+                clearTimeout(timeout);
+                resolve(url);
+            });
+            activeTunnel.once('exit', (code) => {
+                clearTimeout(timeout);
+                activeTunnel = null;
+                tunnelUrl = null;
+                reject(new Error(`Tunnel exited with code ${code}`));
+            });
+        });
+        activeTunnel.on('exit', () => {
+            activeTunnel = null;
+            tunnelUrl = null;
+        });
+        console.log(`[Tunnel] Online: ${tunnelUrl}`);
+        res.json({ active: true, ok: true, url: tunnelUrl });
+    } catch (err) {
+        activeTunnel = null;
+        tunnelUrl = null;
+        console.error('[Tunnel] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/tunnel/stop', requireAdmin, (req, res) => {
+    if (activeTunnel) {
+        activeTunnel.stop();
+        activeTunnel = null;
+        tunnelUrl = null;
+        console.log('[Tunnel] Stopped');
+    }
+    res.json({ active: false, ok: true });
 });
 
 app.get('/api/branding', (req, res) => {
@@ -1806,7 +1937,7 @@ app.get(/^\/wiki\/(.+)$/, (req, res) => {
         <div class="wiki-meta">${t('page_view_last_modified', { date })}</div>
         <div class="wiki-content">${body}</div>
         ${editLink}
-    `, admin));
+    `, admin, page));
 });
 
 app.get('/', (req, res) => {

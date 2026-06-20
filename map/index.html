@@ -109,6 +109,24 @@
             border: 1px dashed rgba(201, 168, 76, 0.08);
         }
 
+        .map-share-btn {
+            position: fixed; bottom: 30px; left: 30px; z-index: 1200;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(12, 16, 32, 0.85); border: 1px solid rgba(201, 168, 76, 0.2);
+            color: var(--gold); cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.25s ease; backdrop-filter: blur(10px);
+        }
+        .map-share-btn:hover { background: rgba(201, 168, 76, 0.15); border-color: var(--gold); box-shadow: 0 0 16px rgba(201, 168, 76, 0.2); }
+        .map-share-toast {
+            position: fixed; bottom: 84px; left: 30px; z-index: 1200;
+            background: rgba(12, 16, 32, 0.92); border: 1px solid var(--gold);
+            color: var(--gold); padding: 8px 16px; border-radius: 8px;
+            font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 1px;
+            opacity: 0; transform: translateY(8px); pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .map-share-toast.show { opacity: 1; transform: translateY(0); }
+
         .loader {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -567,6 +585,35 @@
             margin: 6px 0 0 0;
         }
 
+        .wiki-panel-share {
+            background: none;
+            border: 1px solid rgba(240, 230, 211, 0.15);
+            color: rgba(240, 230, 211, 0.5);
+            cursor: pointer;
+            padding: 6px 10px;
+            line-height: 1;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            margin-left: 8px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+        }
+        .wiki-panel-share:hover {
+            color: var(--gold-light);
+            border-color: rgba(201, 168, 76, 0.4);
+            background: rgba(201, 168, 76, 0.08);
+        }
+        .share-toast {
+            position: absolute; top: 70px; left: 50%; transform: translateX(-50%) translateY(-8px);
+            background: rgba(12, 16, 32, 0.92); border: 1px solid var(--gold);
+            color: var(--gold); padding: 8px 16px; border-radius: 8px;
+            font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 1px;
+            opacity: 0; pointer-events: none; z-index: 10;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .share-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
         .wiki-panel-close {
             background: none;
             border: 1px solid rgba(240, 230, 211, 0.15);
@@ -766,8 +813,12 @@
                 <h2 class="wiki-panel-title" id="wikiTitle">{{map_panel_title}}</h2>
                 <p class="wiki-panel-desc" id="wikiDesc">{{map_panel_desc}}</p>
             </div>
+            <button class="wiki-panel-share" id="wikiShare" title="{{share_button}}" onclick="shareWikiPage()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
             <button class="wiki-panel-close" id="wikiClose" tabindex="-1">&#10005;</button>
         </div>
+        <div class="share-toast" id="shareToast">{{share_copied}}</div>
         <div class="wiki-panel-body">
             <div class="wiki-loading" id="wikiLoading">
                 <div class="wiki-loading-spinner"></div>
@@ -893,10 +944,12 @@
         const wikiClose = document.getElementById('wikiClose');
 
         let activeMarkerEl = null;
+        let currentWikiUrl = '';
 
         function openWiki(name, desc, wikiUrl, markerEl) {
             wikiTitle.textContent = name;
             wikiDesc.textContent = desc || '';
+            currentWikiUrl = wikiUrl ? wikiUrl.trim() : '';
 
             wikiIframe.classList.remove('loaded');
             wikiIframe.src = '';
@@ -957,6 +1010,41 @@
 
         wikiClose.addEventListener('click', closeWiki);
         wikiOverlay.addEventListener('click', closeWiki);
+
+        async function getShareUrl(path) {
+            try {
+                const r = await fetch('/api/tunnel');
+                const t = await r.json();
+                if (t.active && t.url) return t.url + (path || '');
+            } catch(e) {}
+            return window.location.origin + (path || window.location.pathname);
+        }
+
+        async function shareWikiPage() {
+            var tunnelUrl = null;
+            try {
+                var r = await fetch('/api/tunnel');
+                var t = await r.json();
+                if (t.active && t.url) tunnelUrl = t.url;
+            } catch(e) {}
+            if (!tunnelUrl) {
+                var toast = document.getElementById('shareToast');
+                toast.textContent = '{{share_start_first}}';
+                toast.classList.add('show');
+                setTimeout(function() { toast.classList.remove('show'); toast.textContent = '{{share_copied}}'; }, 3000);
+                return;
+            }
+            var url = tunnelUrl + currentWikiUrl;
+            if (navigator.share) {
+                try { await navigator.share({ title: wikiTitle.textContent, url: url }); } catch(e) {}
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(url);
+                var toast = document.getElementById('shareToast');
+                toast.textContent = '{{share_copied}}';
+                toast.classList.add('show');
+                setTimeout(function() { toast.classList.remove('show'); }, 2000);
+            }
+        }
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeWiki();
@@ -1160,6 +1248,37 @@
                 }
             })
             .catch(function() {});
+    </script>
+    <button class="map-share-btn" id="mapShareBtn" title="{{share_button}}" onclick="shareMap()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
+    <div class="map-share-toast" id="mapShareToast">{{share_copied}}</div>
+    <script>
+    async function shareMap() {
+        var tunnelUrl = null;
+        try {
+            var r = await fetch('/api/tunnel');
+            var t = await r.json();
+            if (t.active && t.url) tunnelUrl = t.url;
+        } catch(e) {}
+        if (!tunnelUrl) {
+            var toast = document.getElementById('mapShareToast');
+            toast.textContent = '{{share_start_first}}';
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); toast.textContent = '{{share_copied}}'; }, 3000);
+            return;
+        }
+        var url = tunnelUrl + '/map/';
+        if (navigator.share) {
+            try { await navigator.share({ title: document.title, url: url }); } catch(e) {}
+        } else if (navigator.clipboard) {
+            await navigator.clipboard.writeText(url);
+            var toast = document.getElementById('mapShareToast');
+            toast.textContent = '{{share_copied}}';
+            toast.classList.add('show');
+            setTimeout(function() { toast.classList.remove('show'); }, 2000);
+        }
+    }
     </script>
 </div>
 </body>

@@ -37,6 +37,10 @@
       {
         "from": "../public",
         "to": "public"
+      },
+      {
+        "from": "../node_modules/cloudflared/bin/cloudflared",
+        "to": "cloudflared"
       }
     ],
     "linux": {

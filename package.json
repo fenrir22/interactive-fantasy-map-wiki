@@ -7,6 +7,7 @@
         "build:editor": "node node_modules/vite/bin/vite.js build --config client/editor/vite.config.mjs"
     },
     "dependencies": {
+        "cloudflared": "^0.7.1",
         "express": "^4.21.0",
         "express-session": "^1.18.0",
         "marked": "^14.0.0",

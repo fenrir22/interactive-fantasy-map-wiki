@@ -286,6 +286,17 @@
 
   "footer_credits": "Made with love ❤️ by fenrir",
 
+  "share_button": "Share",
+  "share_copied": "Link copied!",
+  "share_online": "Your world is online!",
+  "share_offline": "World is not shared",
+  "share_start": "Share World",
+  "share_stop": "Stop Sharing",
+  "share_url_label": "Public link",
+  "share_copy": "Copy link",
+  "share_qr": "Show QR code",
+  "share_start_first": "Start sharing in Settings first!",
+
   "settings_section_language": "Language",
   "settings_language_description": "Choose the interface language for the wiki and map.",
   "settings_language_saving": "Changing language...",

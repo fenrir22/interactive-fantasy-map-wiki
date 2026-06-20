@@ -645,6 +645,27 @@
         </div>
 
         <div class="section">
+            <div class="section-title">{{share_start}}</div>
+            <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:16px">{{share_online}}</p>
+            <div id="tunnelStatus" style="margin-bottom:16px;padding:14px 18px;background:rgba(0,0,0,.25);border-radius:10px;border:1px solid var(--border-glow)">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                    <span id="tunnelDot" style="width:10px;height:10px;border-radius:50%;background:#555;flex-shrink:0"></span>
+                    <span id="tunnelLabel" style="color:var(--text-secondary);font-size:0.9rem">{{share_offline}}</span>
+                </div>
+                <div id="tunnelUrlWrap" style="display:none;word-break:break-all;margin-bottom:10px">
+                    <label style="font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px">{{share_url_label}}</label>
+                    <div style="display:flex;gap:8px;margin-top:4px">
+                        <input type="text" id="tunnelUrl" readonly style="flex:1;padding:8px 12px;background:rgba(0,0,0,.3);color:var(--gold);border:1px solid rgba(201,168,76,.15);border-radius:6px;font-family:monospace;font-size:0.85rem">
+                        <button class="btn btn-outline" onclick="copyTunnelUrl()" style="padding:8px 14px;font-size:0.8rem;white-space:nowrap">{{share_copy}}</button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px">
+                    <button class="btn" id="tunnelToggle" data-active="0" onclick="toggleTunnel()" style="padding:10px 24px">{{share_start}}</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
             <div class="section-title">{{settings_section_colors}}</div>
             <p style="color:var(--text-secondary);font-size:0.85rem;font-style:italic;margin-bottom:16px">{{settings_colors_description}}</p>
 
@@ -1140,6 +1161,78 @@
                 container.appendChild(btn);
             });
         });
+
+        /* ---- Tunnel Controls ---- */
+        (function() {
+            var tunnelDot = document.getElementById('tunnelDot');
+            var tunnelLabel = document.getElementById('tunnelLabel');
+            var tunnelUrlWrap = document.getElementById('tunnelUrlWrap');
+            var tunnelUrl = document.getElementById('tunnelUrl');
+            var tunnelToggle = document.getElementById('tunnelToggle');
+
+            function updateTunnelUI(data) {
+                if (data.active && data.url) {
+                    tunnelDot.style.background = '#4caf50';
+                    tunnelLabel.textContent = data.url.replace('https://', '');
+                    tunnelLabel.style.color = 'var(--gold)';
+                    tunnelUrlWrap.style.display = 'block';
+                    tunnelUrl.value = data.url;
+                    tunnelToggle.textContent = '{{share_stop}}';
+                    tunnelToggle.dataset.active = '1';
+                    tunnelToggle.style.background = 'rgba(200,60,60,0.3)';
+                    tunnelToggle.style.border = '1px solid rgba(200,60,60,0.5)';
+                } else {
+                    tunnelDot.style.background = '#555';
+                    tunnelLabel.textContent = '{{share_offline}}';
+                    tunnelLabel.style.color = 'var(--text-secondary)';
+                    tunnelUrlWrap.style.display = 'none';
+                    tunnelToggle.textContent = '{{share_start}}';
+                    tunnelToggle.dataset.active = '0';
+                    tunnelToggle.style.background = '';
+                    tunnelToggle.style.border = '';
+                }
+            }
+
+            fetch('/api/tunnel').then(function(r) { return r.json(); }).then(updateTunnelUI).catch(function() {});
+
+            window.toggleTunnel = function() {
+                var isActive = tunnelToggle.dataset.active === '1';
+                var endpoint = isActive ? '/api/tunnel/stop' : '/api/tunnel/start';
+                tunnelToggle.disabled = true;
+                tunnelToggle.textContent = '...';
+                tunnelLabel.textContent = 'Connecting...';
+                tunnelLabel.style.color = 'var(--gold)';
+                fetch(endpoint, { method: 'POST', credentials: 'same-origin' })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json();
+                    })
+                    .then(function(data) {
+                        tunnelToggle.disabled = false;
+                        updateTunnelUI(data);
+                    })
+                    .catch(function(err) {
+                        console.error('[Tunnel] Toggle error:', err);
+                        tunnelToggle.disabled = false;
+                        tunnelToggle.textContent = '{{share_start}}';
+                        tunnelLabel.textContent = 'Error: ' + (err.message || 'Unknown');
+                        tunnelLabel.style.color = '#f44';
+                        tunnelUrlWrap.style.display = 'none';
+                        tunnelDot.style.background = '#f44';
+                    });
+            };
+
+            window.copyTunnelUrl = function() {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(tunnelUrl.value);
+                    var toast = document.createElement('div');
+                    toast.textContent = '{{share_copied}}';
+                    toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;background:rgba(12,16,32,.92);border:1px solid var(--gold);color:var(--gold);padding:10px 18px;border-radius:8px;font-family:Cinzel,serif;font-size:0.8rem;letter-spacing:1px;';
+                    document.body.appendChild(toast);
+                    setTimeout(function() { toast.remove(); }, 2000);
+                }
+            };
+        })();
     </script>
     <div class="footer-credits">{{footer_credits}}</div>
 </body>

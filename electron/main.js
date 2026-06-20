@@ -64,7 +64,8 @@ function startServer() {
       env: {
         ...process.env,
         DATA_PATH: dataPath,
-        PORT: String(SERVER_PORT)
+        PORT: String(SERVER_PORT),
+        CLOUDFLARED_BIN: path.join(resourcesDir, 'cloudflared')
       },
       stdio: ['pipe', 'pipe', 'pipe', 'ipc']
     });
@@ -80,6 +81,18 @@ function startServer() {
     serverProcess.on('exit', (code) => {
       log(`Server exited with code ${code}`);
       if (code !== 0 && !mainWindow) reject(new Error(`Server exited ${code}`));
+      if (code !== 0 && mainWindow) {
+        log('Server crashed, restarting in 2s...');
+        serverProcess = null;
+        setTimeout(() => {
+          startServer().then(() => {
+            log('Server restarted');
+            if (mainWindow) mainWindow.loadURL(`http://localhost:${SERVER_PORT}`);
+          }).catch((e) => {
+            log('Restart failed: ' + e.message);
+          });
+        }, 2000);
+      }
     });
 
     waitForServer(SERVER_PORT, 15000).then(() => {

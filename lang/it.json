@@ -286,6 +286,17 @@
 
   "footer_credits": "Fatto con amore ❤️ da fenrir",
 
+  "share_button": "Condividi",
+  "share_copied": "Link copiato!",
+  "share_online": "Il tuo mondo è online!",
+  "share_offline": "Il mondo non è condiviso",
+  "share_start": "Condividi Mondo",
+  "share_stop": "Interrompi Condivisione",
+  "share_url_label": "Link pubblico",
+  "share_copy": "Copia link",
+  "share_qr": "Mostra QR code",
+  "share_start_first": "Prima avvia la condivisione nelle Impostazioni!",
+
   "settings_section_language": "Lingua",
   "settings_language_description": "Scegli la lingua dell'interfaccia per la wiki e la mappa.",
   "settings_language_saving": "Cambio lingua in corso...",
